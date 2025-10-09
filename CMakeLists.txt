@@ -20,6 +20,17 @@ add_executable(${PROJECT_NAME}
     src/main.c
 )
 
+# pico_add_library(network NOFLAG)
+# target_sources(network INTERFACE
+#   ${CMAKE_CURRENT_LIST_DIR}/src/network.c
+# )
+add_library(network src/network.h src/network.c)
+target_link_libraries(network pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
+target_include_directories(network PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
+add_library(ha_device src/ha_device.h src/ha_device.c)
+target_link_libraries(ha_device pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
+target_include_directories(ha_device PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
+
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
 
@@ -28,10 +39,12 @@ target_link_libraries(${PROJECT_NAME}
   pico_stdlib
   # pico_cyw43_arch_none
   pico_cyw43_arch_lwip_threadsafe_background
+  network
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
   ${CMAKE_CURRENT_LIST_DIR}
+  ${CMAKE_CURRENT_LIST_DIR}/src
 )
 
 # Choice of available stdio outputs
