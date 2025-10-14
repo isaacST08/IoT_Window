@@ -1,7 +1,10 @@
 #ifndef PINS_H
 #define PINS_H
 
-#define RED_LED_PIN 0
+#define RED_LED_PIN 2
+#define GREEN_LED_PIN 3
+#define YELLOW_LED_PIN 4
+#define BLUE_LED_PIN 5
 
 // Stepper Motor Pins
 #define SM_ENABLE_PIN 20  // Stepper Motor Enable Pin

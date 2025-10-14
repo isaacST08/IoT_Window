@@ -2,6 +2,13 @@
 
 #include <hardware/gpio.h>
 
+#define INIT_LED_PIN(pin)        \
+  ({                             \
+    gpio_init(pin);              \
+    gpio_set_dir(pin, GPIO_OUT); \
+    gpio_put(pin, 0);            \
+  })
+
 /**
  * Initializes the pins for the system.
  *
@@ -11,16 +18,23 @@
  */
 void init_pins(int initial_micro_step) {
   // Red LED Pin.
-  gpio_init(RED_LED_PIN);
-  gpio_set_dir(RED_LED_PIN, GPIO_OUT);
+  // gpio_init(RED_LED_PIN);
+  // gpio_set_dir(RED_LED_PIN, GPIO_OUT);
+  // gpio_put(RED_LED_PIN, 0);
+  INIT_LED_PIN(RED_LED_PIN);
+  INIT_LED_PIN(GREEN_LED_PIN);
+  INIT_LED_PIN(YELLOW_LED_PIN);
+  INIT_LED_PIN(BLUE_LED_PIN);
 
   // Stepper Motor Enable Pin.
   gpio_init(SM_ENABLE_PIN);
   gpio_set_dir(SM_ENABLE_PIN, GPIO_OUT);
+  gpio_put(SM_ENABLE_PIN, 0);
 
   // Stepper Motor Direction Pin.
   gpio_init(SM_DIR_PIN);
   gpio_set_dir(SM_DIR_PIN, GPIO_OUT);
+  gpio_put(SM_DIR_PIN, 0);
 
   // Stepper Motor Pulse Pin.
   gpio_init(SM_PULSE_PIN);

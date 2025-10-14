@@ -1,13 +1,16 @@
 #include "network.h"
+
+#include <cyw43_country.h>
+#include <cyw43_ll.h>
+#include <hardware/gpio.h>
+#include <lwip/netif.h>
+
+#include "lwip/apps/mqtt.h"
 #include "pico/async_context.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "pins.h"
 #include "secrets.h"
-#include <cyw43_country.h>
-#include <cyw43_ll.h>
-#include <hardware/gpio.h>
-#include <lwip/netif.h>
 
 /**
  * Initializes the network connection for the pico.
@@ -38,17 +41,21 @@ int network_init() {
   struct netif *n = &cyw43_state.netif[CYW43_ITF_STA];
   netif_set_hostname(n, "IoT_Window");
   netif_set_up(n);
+  // netif_is_up(n);
   cyw43_arch_lwip_end();
 
   // Begin async connection to the Wi-Fi network.
   cyw43_arch_wifi_connect_async(WIFI_SSID, WIFI_PASSWORD,
-                                CYW43_AUTH_WPA2_AES_PSK // Auth
+                                CYW43_AUTH_WPA2_AES_PSK  // Auth
   );
 
   // Loop until Wi-Fi connects.
   // Blink the red LED twice every second whilst not connected.
+  // int wifi_state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
   while (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
          CYW43_LINK_JOIN) {
+    // while (wifi_state != CYW43_LINK_UP) {
+    // printf("Wifi state: %d\n", wifi_state);
     for (int i = 0; i < 2; i++) {
       gpio_put(RED_LED_PIN, 1);
       sleep_ms(100);
@@ -56,9 +63,11 @@ int network_init() {
       sleep_ms(50);
     }
     sleep_ms(700);
+    // wifi_state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
   }
 
-  // Blink the board led fast 10 times to indicate a Wi-Fi connection was made.
+  // Blink the board led fast 10 times to indicate a Wi-Fi connection was
+  // made.
   for (int i = 0; i < 10; i++) {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     sleep_ms(100);

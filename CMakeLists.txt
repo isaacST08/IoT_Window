@@ -26,7 +26,7 @@ add_executable(${PROJECT_NAME}
 # )
 # Network
 add_library(network src/network.h src/network.c)
-target_link_libraries(network pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
+target_link_libraries(network pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pico_lwip_mqtt)
 target_include_directories(network PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # HA Device
 add_library(ha_device src/ha_device.h src/ha_device.c)
@@ -34,13 +34,13 @@ target_link_libraries(ha_device pico_stdlib pico_cyw43_arch_lwip_threadsafe_back
 target_include_directories(ha_device PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # Pins
 add_library(pins src/pins.h src/pins.c)
-# target_link_libraries(pins pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
-target_link_libraries(pins pico_stdlib)
+target_link_libraries(pins pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
+# target_link_libraries(pins pico_stdlib)
 target_include_directories(pins PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # Stepper Motor
 add_library(stepper_motor src/stepper_motor.h src/stepper_motor.c)
-# target_link_libraries(stepper_motor pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pins)
-target_link_libraries(stepper_motor pico_stdlib pins)
+target_link_libraries(stepper_motor pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pins)
+# target_link_libraries(stepper_motor pico_stdlib pins)
 target_include_directories(stepper_motor PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 
 # Create map/bin/hex/uf2 files
@@ -51,6 +51,7 @@ target_link_libraries(${PROJECT_NAME}
   pico_stdlib
   # pico_cyw43_arch_none
   pico_cyw43_arch_lwip_threadsafe_background
+  pico_lwip_mqtt
   network
   pins
   stepper_motor
