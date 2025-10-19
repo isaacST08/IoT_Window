@@ -1,6 +1,7 @@
 #include <cyw43_country.h>
 #include <cyw43_ll.h>
 #include <hardware/gpio.h>
+#include <lwip/apps/mqtt_opts.h>
 #include <lwip/err.h>
 #include <lwip/ip4_addr.h>
 #include <lwip/ip_addr.h>
@@ -255,6 +256,9 @@ int main() {
   } else {
     printf("Network setup successful.\n");
   }
+
+  printf("MEMSIZE size: %d\n", MEM_SIZE);
+  printf("RINGBUF size: %d\n", MQTT_OUTPUT_RINGBUF_SIZE);
 
   for (int i = 0; i < 10; i++) {
     for (int i = 0; i < 2; i++) {
