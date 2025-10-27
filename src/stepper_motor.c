@@ -3,7 +3,11 @@
 #include <hardware/gpio.h>
 #include <pico/time.h>
 #include <stdint.h>
+#include <stdio.h>
 
+#include "advanced_opts.h"
+#include "common.h"
+#include "opts.h"
 #include "pins.h"
 
 /**
@@ -30,6 +34,8 @@ void sm_step(uint64_t half_delay_us) {
   sleep_us(half_delay_us);
 }
 
+void sm_set_dir(int dir) { gpio_put(SM_DIR_PIN, dir); }
+
 /**
  * Returns the current micro-step state.
  * Compare against one of MS_8, MS_16, MS_32, MS_64 for a human readable value.
@@ -38,4 +44,28 @@ void sm_step(uint64_t half_delay_us) {
  */
 int get_micro_step() {
   return ((gpio_get(SM_MS2_PIN) << 1) & gpio_get(SM_MS1_PIN));
+}
+
+void sm_home() {
+  sm_set_dir(HOME_DIR);
+
+  int home_ls_state = gpio_get(LS_HOME);
+  printf("Home LS pin state: %d\r", home_ls_state);
+  // sleep_ms(1000);
+
+  int steps_completed = 0;
+  while (home_ls_state != 1) {
+    sm_step(100);
+    steps_completed++;
+    home_ls_state = gpio_get(LS_HOME);
+    printf("Home LS pin state: %d, Steps completed: %d\r", home_ls_state,
+           steps_completed);
+  }
+  printf("\nHomeing Completed. Moving back\n");
+
+  sm_set_dir(HOME_DIR ^ 1);
+
+  for (int i = 0; i < 2000; i++) {
+    sm_step(100);
+  }
 }
