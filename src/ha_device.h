@@ -1,6 +1,9 @@
 #ifndef HA_DEVICE_H
 #define HA_DEVICE_H
 
+#include <lwip/apps/mqtt.h>
+#include <stdbool.h>
+
 // ----- Device Info -----
 #define HA_DEVICE_ID "window_1"
 
@@ -240,5 +243,8 @@
 //   "}," component                                \
 //   "\"qos\": 0"                                  \
 //   "}"
+
+bool mqttDoConnect(mqtt_client_t* client);
+bool haDeviceSetup(mqtt_client_t* client);
 
 #endif
