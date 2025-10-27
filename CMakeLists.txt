@@ -20,6 +20,18 @@ add_executable(${PROJECT_NAME}
     src/main.c
 )
 
+# add_library(pico_trinamic INTERFACE)
+# target_sources(pico_trinamic INTERFACE
+#   ${CMAKE_CURRENT_LIST_DIR}/Trinamic-library/common.c
+#   ${CMAKE_CURRENT_LIST_DIR}/Trinamic-library/tmc_interface.c
+#   ${CMAKE_CURRENT_LIST_DIR}/Trinamic-library/tmc2209.c
+# )
+# target_include_directories(pico_trinamic INTERFACE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/Trinamic-library)
+# target_link_libraries(pico_trinamic INTERFACE
+#   pico_stdlib
+#   hardware_uart
+# )
+
 # pico_add_library(network NOFLAG)
 # target_sources(network INTERFACE
 #   ${CMAKE_CURRENT_LIST_DIR}/src/network.c
@@ -28,15 +40,15 @@ add_executable(${PROJECT_NAME}
 add_library(network src/network.h src/network.c)
 target_link_libraries(network pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pico_lwip_mqtt)
 target_include_directories(network PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
-# HA Device
-add_library(ha_device src/ha_device.h src/ha_device.c)
-target_link_libraries(ha_device pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
-target_include_directories(ha_device PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # Pins
 add_library(pins src/pins.h src/pins.c)
 target_link_libraries(pins pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
 # target_link_libraries(pins pico_stdlib)
 target_include_directories(pins PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
+# HA Device
+add_library(ha_device src/ha_device.h src/ha_device.c)
+target_link_libraries(ha_device pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pico_lwip_mqtt pins)
+target_include_directories(ha_device PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # Stepper Motor
 add_library(stepper_motor src/stepper_motor.h src/stepper_motor.c)
 target_link_libraries(stepper_motor pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pins)
@@ -49,12 +61,14 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # Link to pico_stdlib (gpio, time, etc. functions)
 target_link_libraries(${PROJECT_NAME} 
   pico_stdlib
+  # pico_trinamic
   # pico_cyw43_arch_none
   pico_cyw43_arch_lwip_threadsafe_background
   pico_lwip_mqtt
   network
   pins
   stepper_motor
+  ha_device
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
