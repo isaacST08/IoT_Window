@@ -49,4 +49,10 @@ void init_pins(int initial_micro_step) {
   gpio_init(SM_MS2_PIN);
   gpio_set_dir(SM_MS2_PIN, GPIO_OUT);
   gpio_put(SM_MS2_PIN, (initial_micro_step >> 1) & 0b1);
+
+  // Limit Switches
+  gpio_init(LS_1);
+  gpio_init(LS_2);
+  gpio_set_pulls(LS_1, true, false);  // Pull up
+  gpio_set_pulls(LS_2, true, false);  // Pull up
 }
