@@ -10,6 +10,9 @@ in
       local-pico-sdk
       picotool
 
+      minicom
+      mqttx
+
       cmake
       python3 # build requirements for pico-sdk
       udisks # Interact with bootloader filesystem
