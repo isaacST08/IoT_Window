@@ -25,7 +25,7 @@
 #define MEMP_NUM_TCP_SEG 32
 #define MEMP_NUM_ARP_QUEUE 10
 #define MEMP_NUM_SYS_TIMEOUT (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1)
-#define MQTT_REQ_MAX_IN_FLIGHT (5) /* Maximum of subscribe requests */
+#define MQTT_REQ_MAX_IN_FLIGHT (10) /* Maximum of subscribe requests */
 #define MQTT_OUTPUT_RINGBUF_SIZE 8000
 #define PBUF_POOL_SIZE 24
 #define LWIP_ARP 1
