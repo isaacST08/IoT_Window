@@ -23,6 +23,6 @@
 #define MS_32 0b01
 #define MS_64 0b10
 
-void init_pins(int initial_micro_step);
+void init_pins();
 
 #endif
