@@ -1,5 +1,6 @@
 #include "network.h"
 
+#include <cyw43.h>
 #include <cyw43_country.h>
 #include <cyw43_ll.h>
 #include <hardware/gpio.h>
@@ -49,13 +50,29 @@ int network_init() {
                                 CYW43_AUTH_WPA2_AES_PSK  // Auth
   );
 
+  sleep_ms(700);
   // Loop until Wi-Fi connects.
   // Blink the red LED twice every second whilst not connected.
-  // int wifi_state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
-  while (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
-         CYW43_LINK_JOIN) {
-    // while (wifi_state != CYW43_LINK_UP) {
-    // printf("Wifi state: %d\n", wifi_state);
+  int wifi_state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+  // while (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
+  //        CYW43_LINK_JOIN) {
+  switch (wifi_state) {
+    case CYW43_LINK_NONET:
+      printf("WiFi: Could not find network.\n");
+      break;
+    default:
+      printf("Wifi state: %d\n", wifi_state);
+      break;
+  }
+  while (wifi_state != CYW43_LINK_JOIN) {
+    switch (wifi_state) {
+      case CYW43_LINK_NONET:
+        printf("WiFi: Could not find network.\n");
+        break;
+      default:
+        printf("Wifi state: %d\n", wifi_state);
+        break;
+    }
     for (int i = 0; i < 2; i++) {
       gpio_put(RED_LED_PIN, 1);
       sleep_ms(100);
@@ -63,7 +80,7 @@ int network_init() {
       sleep_ms(50);
     }
     sleep_ms(700);
-    // wifi_state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+    wifi_state = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
   }
 
   // Blink the board led fast 10 times to indicate a Wi-Fi connection was
