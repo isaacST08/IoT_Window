@@ -210,7 +210,7 @@ void smSetDir(StepperMotor* sm, bool dir) { gpio_put(sm->pins.direction, dir); }
  * \returns The current direction of the motor.
  *          0 is clockwise, 1 is counter clockwise.
  */
-bool smGetDir(StepperMotor* sm) { gpio_get(sm->pins.direction); }
+bool smGetDir(StepperMotor* sm) { return gpio_get(sm->pins.direction); }
 
 /**
  * Swaps the current direction of the stepper motor.
@@ -274,6 +274,18 @@ uint64_t smGetPosition(StepperMotor* sm) { return sm->step_position; }
  * step (step distance largest, not integer largest. So 64MS < 16MS.).
  */
 int smGetPositionPercentage(StepperMotor* sm) {
+  printf("Motor steps: %lld\n", sm->step_position);
+  printf("Window width mm: %d\n", WINDOW_WIDTH_MM);
+  printf("Window width full steps: %d\n",
+         WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM);
+  printf("Window width micro steps: %d\n",
+         WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS);
+  printf("Motor position percentage long: %llu\n",
+         (100 * sm->step_position) /
+             (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+  printf("Motor position percentage int: %d\n",
+         (int)(100 * sm->step_position) /
+             (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
   return ((100 * sm->step_position) /
           (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
 }

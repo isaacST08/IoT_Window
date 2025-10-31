@@ -24,7 +24,7 @@
     cyw43_arch_lwip_end();                                                \
     if (err != ERR_OK) {                                                  \
       printf("Failed to subscribe to %s with error %d\n", topic, err);    \
-      for (int i = 0; i < 6; i++) {                                       \
+      for (int i = 0; i < 2; i++) {                                       \
         gpio_put(YELLOW_LED_PIN, 1);                                      \
         sleep_ms(100);                                                    \
         gpio_put(YELLOW_LED_PIN, 0);                                      \
@@ -153,15 +153,21 @@ void publishStepperMotorQuietMode() {
 
 void publishStepperMotorPositionPercentage() {
   char buf[64];
-  sprintf(buf, "%lld",
-          window_stepper_motor->step_position /
-              (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS * WINDOW_WIDTH_MM));
+#if INVERT_DISPLAY_DIRECTION
+  sprintf(buf, "%d", -1 * smGetPositionPercentage(window_stepper_motor));
+#else
+  sprintf(buf, "%d", smGetPositionPercentage(window_stepper_motor));
+#endif
   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_PERCENT, buf, 1, 0);
 }
 
 void publishStepperMotorPositionSteps() {
   char buf[64];
+#if INVERT_DISPLAY_DIRECTION
+  sprintf(buf, "%lld", -1 * window_stepper_motor->step_position);
+#else
   sprintf(buf, "%lld", window_stepper_motor->step_position);
+#endif
   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_STEPS, buf, 1, 0);
 }
 
@@ -170,6 +176,15 @@ void publishStepperMotorPositionMM() {
   sprintf(buf, "%0.1f",
           (double)window_stepper_motor->step_position /
               (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+#if INVERT_DISPLAY_DIRECTION
+  sprintf(buf, "%0.1f",
+          -1 * ((double)window_stepper_motor->step_position /
+                (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
+#else
+  sprintf(buf, "%0.1f",
+          (double)window_stepper_motor->step_position /
+              (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+#endif
   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_MM, buf, 1, 0);
 }
 
