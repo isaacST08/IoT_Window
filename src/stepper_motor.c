@@ -8,6 +8,7 @@
 
 #include "advanced_opts.h"
 #include "common.h"
+#include "limit_switch.h"
 #include "opts.h"
 #include "pins.h"
 
@@ -70,7 +71,10 @@ void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
   sm->step_position = 0;
 
   // No queued actions yet.
-  sm->queued_action = NONE;
+  sm->queued_action = SM_ACTION_NONE;
+
+  // Not moving.
+  sm->state = SM_STATE_STOPPED;
 
   // Set the initial micro steps value of the motor.
   smSetMicroStep(sm, initial_micro_step);
@@ -87,7 +91,7 @@ void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
  * \returns The current micro-step state in it's binary pin form.
  */
 uint smGetMicroStep(StepperMotor* sm) {
-  return ((gpio_get(sm->pins.ms2) << 1) & gpio_get(sm->pins.ms1));
+  return (((uint)gpio_get(sm->pins.ms2) << 1) | (uint)gpio_get(sm->pins.ms1));
 }
 
 /**
@@ -225,8 +229,11 @@ void smSwapDir(StepperMotor* sm) { smSetDir(sm, smGetDir(sm) ^ 1); }
  */
 void smSetSpeed(StepperMotor* sm, uint8_t speed) {
   sm->speed = speed;
-  sm->half_step_delay = speed * MIN_US_PER_HALF_SMALLEST_MS +
-                        ((sm->quiet_mode) ? SM_QUIET_MODE_ADDITIONAL_US : 0);
+  // sm->half_step_delay = speed * MIN_US_PER_HALF_SMALLEST_MS +
+  //                       ((sm->quiet_mode) ? SM_QUIET_MODE_ADDITIONAL_US : 0);
+  sm->half_step_delay = (speed + sm->quiet_mode * 4) *
+                        MIN_US_PER_HALF_SMALLEST_MS *
+                        (SM_SMALLEST_MS / smGetMicroStepInt(sm));
 }
 
 /**
@@ -261,6 +268,15 @@ void smSetQuietMode(StepperMotor* sm, bool mode) {
  * step (step distance largest, not integer largest. So 64MS < 16MS.).
  */
 uint64_t smGetPosition(StepperMotor* sm) { return sm->step_position; }
+
+/**
+ * Get the current position of the motor in increments of the smallest micro
+ * step (step distance largest, not integer largest. So 64MS < 16MS.).
+ */
+int smGetPositionPercentage(StepperMotor* sm) {
+  return ((100 * sm->step_position) /
+          (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+}
 
 /**
  * Performs one step of the motor with a total step time of double the
@@ -315,13 +331,16 @@ void smHome(StepperMotor* sm) {
 
   // Perform the first home.
   smSetSpeed(sm, 2);
-  while (gpio_get(LS_HOME) != 1) smStep(sm);
+  // while (gpio_get(LS_HOME) != 1) smStep(sm);
+  while (!LS_TRIGGERED(LS_HOME)) smStep(sm);
 
   // Move back some
   smSetDir(sm, HOME_DIR ^ 1);
   smSetSpeed(sm, 1);
-  while (gpio_get(LS_HOME) == 1) smStep(sm);
-  for (int i = 0; i < 2000; i++) smStep(sm);
+  // while (gpio_get(LS_HOME) == 1) smStep(sm);
+  while (LS_TRIGGERED(LS_HOME)) smStep(sm);
+  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS * 8); i++)
+    smStep(sm);
 
   // Perform the second, slower, home.
   smSetDir(sm, HOME_DIR);
@@ -350,14 +369,25 @@ bool smClose(StepperMotor* sm) {
   // Reset any call to stop the motor.
   sm->stop_motor = false;
 
+  // Set the current state.
+  sm->state = SM_STATE_CLOSING;
+
   // Move the motor in the close direction until either:
   // - The motor is told to stop, or
   // - The end stop is found, or
   // - The encoded window position in steps reaches the expected closed
   //   position.
-  while (!sm->stop_motor && gpio_get(LS_CLOSED) != 1 &&
+  // while (!sm->stop_motor && gpio_get(LS_CLOSED) != 1 &&
+  while (!sm->stop_motor && !LS_TRIGGERED(LS_CLOSED) &&
          sm->step_position != WINDOW_CLOSED_STEP_POSITION)
     smStep(sm);
+
+  // Update the motor state.
+  sm->state = (sm->stop_motor) ? SM_STATE_STOPPED : SM_STATE_CLOSED;
+  sm->queued_action = SM_ACTION_NONE;
+  // if (gpio_get(LS_CLOSED) == 1) sm->step_position =
+  // WINDOW_CLOSED_STEP_POSITION;
+  if (LS_TRIGGERED(LS_CLOSED)) sm->step_position = WINDOW_CLOSED_STEP_POSITION;
 
   // Return true if the motor successfully closed the window and was not called
   // to stop.
@@ -377,13 +407,24 @@ bool smOpen(StepperMotor* sm) {
   // Reset any call to stop the motor.
   sm->stop_motor = false;
 
+  // Set the current state.
+  sm->state = SM_STATE_OPENING;
+
   // Move the motor in the open direction until either:
   // - The motor is told to stop, or
   // - The end stop is found, or
   // - The encoded window position in steps reaches the expected open position.
-  while (!sm->stop_motor && gpio_get(LS_OPEN) != 1 &&
+  // while (!sm->stop_motor && gpio_get(LS_OPEN) != 1 &&
+  while (!sm->stop_motor && !LS_TRIGGERED(LS_OPEN) &&
          sm->step_position != WINDOW_OPEN_STEP_POSITION)
     smStep(sm);
+
+  // Update the motor state.
+  sm->state = (sm->stop_motor) ? SM_STATE_STOPPED : SM_STATE_OPEN;
+  sm->queued_action = SM_ACTION_NONE;
+  // if (gpio_get(LS_OPEN) == 1) sm->step_position =
+  // WINDOW_CLOSED_STEP_POSITION;
+  if (LS_TRIGGERED(LS_OPEN)) sm->step_position = WINDOW_CLOSED_STEP_POSITION;
 
   // Return true if the motor successfully opened the window and was not called
   // to stop.

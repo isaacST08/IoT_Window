@@ -4,7 +4,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-enum StepperMotorAction { NONE, OPEN, CLOSE };
+#include "limit_switch.h"
+
+enum StepperMotorAction { SM_ACTION_NONE, SM_ACTION_OPEN, SM_ACTION_CLOSE };
+
+enum StepperMotorState {
+  SM_STATE_OPEN,
+  SM_STATE_OPENING,
+  SM_STATE_CLOSED,
+  SM_STATE_CLOSING,
+  SM_STATE_STOPPED
+};
 
 struct StepperMotorPins {
   uint enable;
@@ -14,9 +24,17 @@ struct StepperMotorPins {
   uint ms2;
 };
 
+// struct StepperMotorLimitSwitches {
+//   LimitSwitch* closed;
+//   LimitSwitch* open;
+//   LimitSwitch* home;
+// };
+
 typedef struct StepperMotor {
   enum StepperMotorAction queued_action;
+  enum StepperMotorState state;
   struct StepperMotorPins pins;
+  // struct StepperMotorLimitSwitches limit_switches;
   bool quiet_mode;
   bool stop_motor;
   int64_t step_position;
@@ -26,6 +44,8 @@ typedef struct StepperMotor {
 
 void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
             uint pulse_pin, uint micro_step_1_pin, uint micro_step_2_pin,
+            // LimitSwitch* closed_limit_switch, LimitSwitch* open_limit_switch,
+            // LimitSwitch* home_limit_switch,
             uint initial_micro_step, uint8_t initial_speed);
 
 uint smGetMicroStep(StepperMotor* sm);
@@ -45,6 +65,7 @@ uint64_t smGetSpeed(StepperMotor* sm);
 void smSetQuietMode(StepperMotor* sm, bool mode);
 
 uint64_t smGetPosition(StepperMotor* sm);
+int smGetPositionPercentage(StepperMotor* sm);
 
 void smStepExact(StepperMotor* sm, uint64_t half_step_delay);
 void smStep(StepperMotor* sm);
