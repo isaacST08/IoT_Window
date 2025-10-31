@@ -4,6 +4,11 @@
 #include <lwip/apps/mqtt.h>
 #include <stdbool.h>
 
+#include "common.h"
+#include "stepper_motor.h"
+
+// enum DeviceState { OPEN, OPENING, CLOSED, CLOSING, STOPPED };
+
 // ----- Device Info -----
 #define HA_DEVICE_ID "window_1"
 
@@ -22,12 +27,13 @@
 #define MQTT_TOPIC_STATE_POSITION_STEPS MQTT_TOPIC_BASE "state/steps"
 #define MQTT_TOPIC_STATE_POSITION_MM MQTT_TOPIC_BASE "state/mm"
 #define MQTT_TOPIC_STATE_POSITION_PERCENT MQTT_TOPIC_BASE "state/percent"
-#define MQTT_TOPIC_COMMAND_GENERAL MQTT_TOPIC_BASE "cmd/general"
+#define MQTT_TOPIC_COMMAND_GENERAL MQTT_TOPIC_BASE "cmd/gnrl"
 #define MQTT_TOPIC_COMMAND_SPEED MQTT_TOPIC_BASE "cmd/speed"
 #define MQTT_TOPIC_COMMAND_QUIET MQTT_TOPIC_BASE "cmd/quiet"
 #define MQTT_TOPIC_COMMAND_POSITION_STEPS MQTT_TOPIC_BASE "cmd/steps"
 #define MQTT_TOPIC_COMMAND_POSITION_MM MQTT_TOPIC_BASE "cmd/mm"
 #define MQTT_TOPIC_COMMAND_POSITION_PERCENT MQTT_TOPIC_BASE "cmd/percent"
+#define MQTT_TOPIC_SENSOR_MICRO_STEPS MQTT_TOPIC_BASE "snsr/micrstp"
 
 // ----- Device Discovery -----
 #define HA_DEVICE_MQTT_DISCOVERY_TOPIC "hass/device/" HA_DEVICE_ID "/config"
@@ -111,13 +117,15 @@
   "\""                                                            \
   "},"                                                            \
   "\"p\":\"number\","                                             \
-  "\"min\":1,"                                                    \
-  "\"max\":20,"                                                   \
+  "\"min\":0,"                                                    \
+  "\"max\":255,"                                                  \
   "\"mode\":\"box\","                                             \
   "\"state_topic\":\"" MQTT_TOPIC_STATE_SPEED                     \
   "\","                                                           \
   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_SPEED                 \
-  "\""                                                            \
+  "\","                                                           \
+  "\"value_template\":\"{{ int(value) }}\","                      \
+  "\"command_template\":\"{{ value }}\""                          \
   "},"                                                            \
                                                                   \
   /* Main Window Position Steps Component */                      \
@@ -134,8 +142,8 @@
   "\""                                                            \
   "},"                                                            \
   "\"p\":\"number\","                                             \
-  "\"min\":0,"                                                    \
-  "\"max\":2147483648," /* 2^31 */                                \
+  "\"min\":-10000000000000000000," /* 1e19 */                     \
+  "\"max\":10000000000000000000,"  /* 1e19 */                     \
   "\"mode\":\"box\","                                             \
   "\"state_topic\":\"" MQTT_TOPIC_STATE_POSITION_STEPS            \
   "\","                                                           \
@@ -157,10 +165,10 @@
   "\""                                                            \
   "},"                                                            \
   "\"p\":\"number\","                                             \
-  "\"min\":0,"                                                    \
-  "\"max\":2147483648," /* 2^31 */                                \
+  "\"min\":-10000000000000000000," /* 1e19 */                     \
+  "\"max\":10000000000000000000,"  /* 1e19 */                     \
   "\"mode\":\"box\","                                             \
-  "\"step\":\"0.001\","                                           \
+  "\"step\":\"0.1\","                                             \
   "\"unit_of_measurement\":\"mm\","                               \
   "\"state_topic\":\"" MQTT_TOPIC_STATE_POSITION_MM               \
   "\","                                                           \
@@ -186,6 +194,26 @@
   "\","                                                           \
   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_QUIET                 \
   "\""                                                            \
+  "},"                                                            \
+                                                                  \
+  /* Micro Step Sensor */                                         \
+  "\"" HA_DEVICE_ID                                               \
+  "-Micro_Step_Sensor\":{"                                        \
+  "\"name\":\"Micro Step Sensor\","                               \
+  "\"unique_id\":\"" HA_DEVICE_ID                                 \
+  "-Micro_Step_Sensor\","                                         \
+  "\"optimistic\":\"false\","                                     \
+  "\"availability\":{"                                            \
+  "\"payload_available\":\"online\","                             \
+  "\"payload_not_available\":\"offline\","                        \
+  "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
+  "\""                                                            \
+  "},"                                                            \
+  "\"p\":\"sensor\","                                             \ 
+  "\"device_class\":null,"                                        \
+  "\"state_topic\":\"" MQTT_TOPIC_SENSOR_MICRO_STEPS              \
+  "\","                                                           \
+  "\"qos\":1"                                                     \
   "}"                                                             \
                                                                   \
   "},"                                                            \
@@ -244,7 +272,18 @@
 //   "\"qos\": 0"                                  \
 //   "}"
 
+bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
+                      u8_t retain);
+void updateState(enum StepperMotorAction device_state);
 bool mqttDoConnect(mqtt_client_t* client);
-bool haDeviceSetup(mqtt_client_t* client);
+void haDeviceSetup(mqtt_client_t* client, StepperMotor* stepper_motor);
+
+void publishStepperMotorSpeed();
+void publishStepperMotorQuietMode();
+void publishStepperMotorState();
+void publishStepperMotorPositionPercentage();
+void publishStepperMotorPositionSteps();
+void publishStepperMotorPositionMM();
+void publishAll();
 
 #endif

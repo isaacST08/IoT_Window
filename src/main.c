@@ -10,7 +10,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "common.h"
 #include "ha_device.h"
+#include "limit_switch.h"
 #include "lwip/apps/mqtt.h"
 #include "network.h"
 #include "pico/async_context.h"
@@ -27,7 +29,8 @@ int main() {
   printf("Program Start\n");
 
   printf("Initializing Pins... ");
-  init_pins(MS_16);
+  init_pins();
+
   printf("done.\n");
 
   // Wave LEDs.
@@ -52,32 +55,46 @@ int main() {
   }
 
   // Initialize the network connection.
+  printf("Initializing Networking...");
   if (network_init() != 0) {
-    printf("Failed to initialize network connection.\n");
+    // printf("Failed to initialize network connection.\n");
+    printf("Failed! Exiting.\n");
     return -1;
   } else {
-    printf("Network setup successful.\n");
+    printf("Success.\n");
+    // printf("Network setup successful.\n");
   }
 
   printf("MEMSIZE size: %d\n", MEM_SIZE);
   printf("RINGBUF size: %d\n", MQTT_OUTPUT_RINGBUF_SIZE);
 
-  // for (int i = 0; i < 10; i++) {
-  //   for (int i = 0; i < 2; i++) {
-  //     gpio_put(YELLOW_LED_PIN, 1);
-  //     sleep_ms(100);
-  //     gpio_put(YELLOW_LED_PIN, 0);
-  //     sleep_ms(50);
-  //   }
-  //   sleep_ms(700);
+  // enum DeviceState *queued_motor_move;
+  // *queued_motor_move = STOPPED;
+  // enum DeviceState queued_motor_move = STOPPED;
+  // uint64_t motor_speed = 40;
+
+  // sm_set_speed_ptr(&motor_speed);
+
+  // for (int i = 0; i < 15; i++) {
+  //   gpio_put(RED_LED_PIN, 1);
+  //   gpio_put(GREEN_LED_PIN, 1);
+  //   sleep_ms(300);
+  //   gpio_put(RED_LED_PIN, 0);
+  //   gpio_put(GREEN_LED_PIN, 0);
+  //   sleep_ms(300);
   // }
-  // sleep_ms(10 * 1000);
+
+  // Initialize Stepper Motor.
+  StepperMotor stepper_motor;
+  smInit(&stepper_motor, SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN, SM_MS1_PIN,
+         SM_MS2_PIN, MS_64, 1);
 
   // MQTT Setup
   printf("Setting up mqtt...\n");
   cyw43_arch_lwip_begin();
   mqtt_client_t *mqtt_client = mqtt_client_new();
   cyw43_arch_lwip_end();
+  printf("Insurring mqtt connection...\n");
   bool mqtt_setup_success;
   do {
     mqtt_setup_success = mqttDoConnect(mqtt_client);
@@ -102,10 +119,11 @@ int main() {
   // printf("MQTT setup finished\n");
   // cyw43_arch_lwip_end();
 
-  bool ha_dev_discovery_msg_sent;
-  do {
-    ha_dev_discovery_msg_sent = haDeviceSetup(mqtt_client);
-  } while (!ha_dev_discovery_msg_sent);
+  haDeviceSetup(mqtt_client, &stepper_motor);
+  // bool ha_dev_discovery_msg_sent;
+  // do {
+  //   ha_dev_discovery_msg_sent = haDeviceSetup(mqtt_client, &stepper_motor);
+  // } while (!ha_dev_discovery_msg_sent);
 
   // mqtt_publish_device_config(mqtt_client, NULL);
   // example_publish(mqtt_client, NULL);
@@ -114,16 +132,53 @@ int main() {
   // Turn on the board led.
   cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
 
-  sm_enable();
-  // for (int i = 0; i < 10000; i++) {
-  //   sm_step(200);
-  // }
+  cyw43_arch_lwip_begin();
+  smEnable(&stepper_motor);
   printf("Homeing...\n");
-  sm_home();
+  smHome(&stepper_motor);
+  printf("Homeing Complete.\n");
+  cyw43_arch_lwip_end();
 
   while (true) {
     gpio_put(RED_LED_PIN, cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
                               CYW43_LINK_JOIN);
+
+    if (stepper_motor.queued_action != SM_ACTION_NONE) {
+      printf("Queued motor move: %d\n", stepper_motor.queued_action);
+      switch (stepper_motor.queued_action) {
+        case SM_ACTION_OPEN: {
+          printf("Open motor activated\n");
+          bool open_success = smOpen(&stepper_motor);
+          // if (open_success) {
+          //   // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "open", 1, 0);
+          //   // updateState(OPEN);
+          // } else {
+          //   printf("Stopping motor\n");
+          //   updateState(STOPPED);
+          // }
+          // queued_motor_move = STOPPED;
+          break;
+        }
+        case SM_ACTION_CLOSE: {
+          bool close_success = smClose(&stepper_motor);
+          // if (close_success) {
+          //   // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "close", 1, 0);
+          //   updateState(CLOSED);
+          // } else {
+          //   updateState(STOPPED);
+          // }
+          // queued_motor_move = STOPPED;
+          break;
+        }
+        case SM_ACTION_NONE:
+          break;
+          // default:
+          //   // queued_motor_move = STOPPED;
+          //   break;
+      }
+      // queued_motor_move = STOPPED;
+      publishAll();
+    }
 
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     sleep_ms(250);
