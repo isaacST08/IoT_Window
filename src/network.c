@@ -46,9 +46,23 @@ int network_init() {
   cyw43_arch_lwip_end();
 
   // Begin async connection to the Wi-Fi network.
-  cyw43_arch_wifi_connect_async(WIFI_SSID, WIFI_PASSWORD,
-                                CYW43_AUTH_WPA2_AES_PSK  // Auth
-  );
+  int wifi_connect_err =
+      cyw43_arch_wifi_connect_async(WIFI_SSID, WIFI_PASSWORD,
+                                    CYW43_AUTH_WPA2_AES_PSK  // Auth
+      );
+  if (wifi_connect_err != 0) {
+    printf("There was an error connecting to wifi. Error code: %d\n",
+           wifi_connect_err);
+  }
+  // uint32_t wifi_pm;
+  // cyw43_wifi_get_pm(&cyw43_state, &wifi_pm);
+  // printf("Initial wifi performance mode: %x\n", wifi_pm);
+  // printf("Performance mode: %x\n", CYW43_PERFORMANCE_PM);
+  while (cyw43_wifi_pm(&cyw43_state, CYW43_PERFORMANCE_PM) != 0) {
+    sleep_ms(100);
+  };
+  // cyw43_wifi_get_pm(&cyw43_state, &wifi_pm);
+  // printf("Set wifi performance mode: %x\n", wifi_pm);
 
   sleep_ms(700);
   // Loop until Wi-Fi connects.
