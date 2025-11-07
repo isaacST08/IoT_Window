@@ -20,7 +20,7 @@
 #endif
 #define MEM_ALIGNMENT 4
 #ifndef MEM_SIZE
-#define MEM_SIZE 32000
+#define MEM_SIZE 40000
 #endif
 #define MEMP_NUM_TCP_SEG 32
 #define MEMP_NUM_ARP_QUEUE 10
