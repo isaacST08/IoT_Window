@@ -1,4 +1,4 @@
-#include "stepper_motor.h"
+#include "stepper_motor.hh"
 
 #include <hardware/gpio.h>
 #include <math.h>
@@ -13,13 +13,14 @@
 #include "opts.h"
 #include "pins.h"
 
+using namespace stepper_motor;
+
 #define MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(mm_per_sec, micro_step) \
   ceil(1000000.0 / (mm_per_sec * SM_FULL_STEPS_PER_MM * micro_step * 2))
 
 /**
  * Initialize a stepper motor object.
  *
- * \param sm The stepper motor to initialize.
  * \param enable_pin The enable pin of the motor.
  * \param direction_pin The direction pin of the motor.
  * \param pulse_pin The pulse/step pin of the motor.
@@ -30,61 +31,61 @@
  * \param initial_micro_step The initial micros step to set the motor to.
  * \param initial_speed The initial speed to set the motor to.
  */
-void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
-            uint pulse_pin, uint micro_step_1_pin, uint micro_step_2_pin,
-            uint initial_micro_step, float initial_speed) {
+StepperMotor::StepperMotor(uint enable_pin, uint direction_pin, uint pulse_pin,
+                           uint micro_step_1_pin, uint micro_step_2_pin,
+                           uint initial_micro_step, float initial_speed) {
   // Set stepper motor pins.
-  sm->pins.enable = enable_pin;
-  sm->pins.direction = direction_pin;
-  sm->pins.pulse = pulse_pin;
-  sm->pins.ms1 = micro_step_1_pin;
-  sm->pins.ms2 = micro_step_2_pin;
+  this->pins.enable = enable_pin;
+  this->pins.direction = direction_pin;
+  this->pins.pulse = pulse_pin;
+  this->pins.ms1 = micro_step_1_pin;
+  this->pins.ms2 = micro_step_2_pin;
 
   // ----- Initialize the pins -----
   // Enable Pin.
-  gpio_init(sm->pins.enable);
-  gpio_set_dir(sm->pins.enable, GPIO_OUT);
-  gpio_put(sm->pins.enable, 0);
+  gpio_init(this->pins.enable);
+  gpio_set_dir(this->pins.enable, GPIO_OUT);
+  gpio_put(this->pins.enable, 0);
 
   // Motor Direction Pin.
-  gpio_init(sm->pins.direction);
-  gpio_set_dir(sm->pins.direction, GPIO_OUT);
-  gpio_put(sm->pins.direction, 0);
+  gpio_init(this->pins.direction);
+  gpio_set_dir(this->pins.direction, GPIO_OUT);
+  gpio_put(this->pins.direction, 0);
 
   // Motor Pulse Pin.
-  gpio_init(sm->pins.pulse);
-  gpio_set_dir(sm->pins.pulse, GPIO_OUT);
-  gpio_put(sm->pins.pulse, 0);
+  gpio_init(this->pins.pulse);
+  gpio_set_dir(this->pins.pulse, GPIO_OUT);
+  gpio_put(this->pins.pulse, 0);
 
   // Stepper Motor Micro-Step Pin A.
-  gpio_init(sm->pins.ms1);
-  gpio_set_dir(sm->pins.ms1, GPIO_OUT);
+  gpio_init(this->pins.ms1);
+  gpio_set_dir(this->pins.ms1, GPIO_OUT);
 
   // Stepper Motor Micro-Step Pin B.
-  gpio_init(sm->pins.ms2);
-  gpio_set_dir(sm->pins.ms2, GPIO_OUT);
+  gpio_init(this->pins.ms2);
+  gpio_set_dir(this->pins.ms2, GPIO_OUT);
 
   // ----- Set Initial Values -----
   // Quiet mode off by default.
-  sm->quiet_mode = false;
+  this->quiet_mode = false;
 
   // No call to stop the motor.
-  sm->stop_motor = false;
+  this->stop_motor = false;
 
   // Zero the position (assume).
-  sm->step_position = 0;
+  this->step_position = 0;
 
   // No queued actions yet.
-  sm->queued_action = SM_ACTION_NONE;
+  this->queued_action = Action::NONE;
 
   // Not moving.
-  sm->state = SM_STATE_STOPPED;
+  this->state = State::STOPPED;
 
   // Set the initial micro steps value of the motor.
-  smSetMicroStep(sm, initial_micro_step);
+  this->setMicroStep(initial_micro_step);
 
   // Default motor speed.
-  smSetSpeed(sm, initial_speed);
+  this->setSpeed(initial_speed);
 }
 
 /**
@@ -94,8 +95,9 @@ void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
  *
  * \returns The current micro-step state in it's binary pin form.
  */
-uint smGetMicroStep(StepperMotor* sm) {
-  return (((uint)gpio_get(sm->pins.ms2) << 1) | (uint)gpio_get(sm->pins.ms1));
+uint StepperMotor::getMicroStep() {
+  return (((uint)gpio_get(this->pins.ms2) << 1) |
+          (uint)gpio_get(this->pins.ms1));
 }
 
 /**
@@ -103,8 +105,8 @@ uint smGetMicroStep(StepperMotor* sm) {
  *
  * \returns The current micro-step state in it's integer form.
  */
-uint smGetMicroStepInt(StepperMotor* sm) {
-  int micro_steps = smGetMicroStep(sm);
+uint StepperMotor::getMicroStepInt() {
+  int micro_steps = this->getMicroStep();
   switch (micro_steps) {
     case MS_8:
       return 8;
@@ -125,13 +127,12 @@ uint smGetMicroStepInt(StepperMotor* sm) {
 /**
  * Set the micro steps for the stepper motor.
  *
- * \param sm The stepper motor to set the micro steps of.
  * \param micro_step The micro steps to set the motor to.
  */
-void smSetMicroStep(StepperMotor* sm, uint micro_step) {
+void StepperMotor::setMicroStep(uint micro_step) {
   // Record the current state of the stepper motor.
-  uint current_ms_int = smGetMicroStepInt(sm);
-  bool saved_dir = smGetDir(sm);
+  uint current_ms_int = this->getMicroStepInt();
+  bool saved_dir = this->getDir();
 
   // Determine the integer form of the desired micro step and
   // insure that the desired ms is indeed an accepted value.
@@ -160,79 +161,71 @@ void smSetMicroStep(StepperMotor* sm, uint micro_step) {
   if (desired_ms_int < current_ms_int) {
     // Calculate how many steps are required to align to the new micro steps.
     int64_t required_steps =
-        sm->step_position % (SM_SMALLEST_MS / desired_ms_int);
+        this->step_position % (SM_SMALLEST_MS / desired_ms_int);
 
     // Make the required steps as small as possible and absolute.
     // We will step towards the zero position.
-    if (sm->step_position < 0) {
+    if (this->step_position < 0) {
       required_steps -= (SM_SMALLEST_MS / desired_ms_int);
     }
 
     // Set the direction of the motor to step towards the zero point position.
     // Dir of 0 goes up, 1 goes down. So if the position is positive, that means
     // we set the direction to be 1 and to go down (towards zero).
-    smSetDir(sm, (sm->step_position >= 0));
+    StepperMotor::setDir(this->step_position >= 0);
 
     // Perform the steps.
     for (int i = 0; i < required_steps; i++) {
-      smStep(sm);
+      this->step();
     }
 
     // Return the motor direction to how it was found.
-    smSetDir(sm, saved_dir);
+    this->setDir(saved_dir);
   }
 
   // Set the micro step pins for the new micro step value.
-  gpio_put(sm->pins.ms1, desired_ms & 0b1);
-  gpio_put(sm->pins.ms2, (desired_ms >> 1) & 0b1);
+  gpio_put(this->pins.ms1, desired_ms & 0b1);
+  gpio_put(this->pins.ms2, (desired_ms >> 1) & 0b1);
 }
 
 /**
  * Enables the stepper motor.
  */
-void smEnable(StepperMotor* sm) { gpio_put(sm->pins.enable, 0); }
+void StepperMotor::enable() { gpio_put(this->pins.enable, 0); }
 
 /**
  * Disables the stepper motor.
  */
-void smDisable(StepperMotor* sm) { gpio_put(sm->pins.enable, 1); }
+void StepperMotor::disable() { gpio_put(this->pins.enable, 1); }
 
 /**
  * Set the direction of the stepper motor.
  *
- * \param sm The stepper motor to set the direction of.
  * \param dir The direction to set.
  *            0 is clockwise, 1 is counter clockwise.
  */
-void smSetDir(StepperMotor* sm, bool dir) { gpio_put(sm->pins.direction, dir); }
+void StepperMotor::setDir(bool dir) { gpio_put(this->pins.direction, dir); }
 
 /**
  * Gets the current direction of the stepper motor.
  *
- * \param sm The stepper motor to get the direction for.
- *
  * \returns The current direction of the motor.
  *          0 is clockwise, 1 is counter clockwise.
  */
-bool smGetDir(StepperMotor* sm) { return gpio_get(sm->pins.direction); }
+bool StepperMotor::getDir() { return gpio_get(this->pins.direction); }
 
 /**
  * Swaps the current direction of the stepper motor.
- *
- * \param sm The stepper motor to swap the direction for.
  */
-void smSwapDir(StepperMotor* sm) { smSetDir(sm, smGetDir(sm) ^ 1); }
+void StepperMotor::swapDir() { this->setDir(this->getDir() ^ 1); }
 
 /**
  * Set the speed of the stepper motor.
  *
- * This speed value is inverted: lower values result in faster motor speeds.
- *
- * \param sm The stepper motor to set the speed of.
- * \param speed The speed to set the motor to.
+ * \param speed The speed to set the motor to in millimeters per second.
  */
-void smSetSpeed(StepperMotor* sm, float speed) {
-  sm->speed = speed;
+void StepperMotor::setSpeed(float speed) {
+  this->speed = speed;
   // sm->half_step_delay = speed * MIN_US_PER_HALF_SMALLEST_MS +
   //                       ((sm->quiet_mode) ? SM_QUIET_MODE_ADDITIONAL_US : 0);
   // sm->half_step_delay = (speed + sm->quiet_mode * 4) *
@@ -242,12 +235,12 @@ void smSetSpeed(StepperMotor* sm, float speed) {
   // sm->half_step_delay = SM_FULL_STEPS_PER_MM * smGetMicroStepInt(sm)
   // sm->half_step_delay = ceil(1000000.0 / (speed * SM_FULL_STEPS_PER_MM * 2));
 
-  if (sm->quiet_mode) {
+  if (this->quiet_mode) {
     uint64_t half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 64);
-    smSetMicroStep(sm, MS_64);
-    sm->half_step_delay = (SM_MS64_MIN_HALF_DELAY_QUIET < half_step_delay)
-                              ? half_step_delay
-                              : SM_MS64_MIN_HALF_DELAY_QUIET;
+    this->setMicroStep(MS_64);
+    this->half_step_delay = (SM_MS64_MIN_HALF_DELAY_QUIET < half_step_delay)
+                                ? half_step_delay
+                                : SM_MS64_MIN_HALF_DELAY_QUIET;
   } else {
     uint64_t possible_half_step_delay;
     uint64_t chosen_half_step_delay;
@@ -297,8 +290,8 @@ void smSetSpeed(StepperMotor* sm, float speed) {
     }
 
     // Set determined values.
-    smSetMicroStep(sm, chosen_micro_step);
-    sm->half_step_delay = chosen_half_step_delay;
+    this->setMicroStep(chosen_micro_step);
+    this->half_step_delay = chosen_half_step_delay;
   }
 }
 
@@ -309,50 +302,48 @@ void smSetSpeed(StepperMotor* sm, float speed) {
  * The speed value directly relates to the half step speed of the motor in micro
  * seconds (assuming that quiet mode is not set).
  *
- * \param sm The stepper motor to get the speed of.
- *
  * \returns The speed the motor is set to. This value relates to half of the
  * delay per micro step in micro seconds.
  */
-float smGetSpeed(StepperMotor* sm) { return sm->speed; }
+float StepperMotor::getSpeed() { return this->speed; }
 
 /**
  * Sets the quiet mode for the motor.
  *
  * \param mode Whether to enable or disable quiet mode.
  */
-void smSetQuietMode(StepperMotor* sm, bool mode) {
+void StepperMotor::setQuietMode(bool mode) {
   // Set the quiet mode flag.
-  sm->quiet_mode = mode;
+  this->quiet_mode = mode;
 
   // Update the motor speed.
-  smSetSpeed(sm, sm->speed);
+  this->setSpeed(this->speed);
 }
 
 /**
  * Get the current position of the motor in increments of the smallest micro
  * step (step distance largest, not integer largest. So 64MS < 16MS.).
  */
-uint64_t smGetPosition(StepperMotor* sm) { return sm->step_position; }
+uint64_t StepperMotor::getPosition() { return this->step_position; }
 
 /**
  * Get the current position of the motor in increments of the smallest micro
  * step (step distance largest, not integer largest. So 64MS < 16MS.).
  */
-int smGetPositionPercentage(StepperMotor* sm) {
-  printf("Motor steps: %lld\n", sm->step_position);
+int StepperMotor::getPositionPercentage() {
+  printf("Motor steps: %lld\n", this->step_position);
   printf("Window width mm: %d\n", WINDOW_WIDTH_MM);
   printf("Window width full steps: %d\n",
          WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM);
   printf("Window width micro steps: %d\n",
          WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS);
   printf("Motor position percentage long: %llu\n",
-         (100 * sm->step_position) /
+         (100 * this->step_position) /
              (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
   printf("Motor position percentage int: %d\n",
-         (int)(100 * sm->step_position) /
+         (int)(100 * this->step_position) /
              (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-  return ((100 * sm->step_position) /
+  return ((100 * this->step_position) /
           (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
 }
 
@@ -362,76 +353,73 @@ int smGetPositionPercentage(StepperMotor* sm) {
  *
  * Records the position change at the end of the step.
  *
- * \param sm The stepper motor to step.
  * \param half_step_delay The half value for the total time the step will take.
  */
-void smStepExact(StepperMotor* sm, uint64_t half_step_delay) {
+void StepperMotor::stepExact(uint64_t half_step_delay) {
   // Perform the step.
-  gpio_put(sm->pins.pulse, 1);
+  gpio_put(this->pins.pulse, 1);
   sleep_us(half_step_delay);
-  gpio_put(sm->pins.pulse, 0);
+  gpio_put(this->pins.pulse, 0);
   sleep_us(half_step_delay);
 
   // Record the position change.
 
   // Option A:
-  if (smGetDir(sm)) {
-    sm->step_position -= SM_SMALLEST_MS / smGetMicroStepInt(sm);
+  if (this->getDir()) {
+    this->step_position -= SM_SMALLEST_MS / this->getMicroStepInt();
   } else
-    sm->step_position += SM_SMALLEST_MS / smGetMicroStepInt(sm);
+    this->step_position += SM_SMALLEST_MS / this->getMicroStepInt();
 
   // // Option B:
-  // sm->step_position +=
-  //     (1 - 2 * smGetDir(sm)) * (SM_SMALLEST_MS / smGetMicroStepInt(sm));
+  // this->step_position +=
+  //     (1 - 2 * this->getDir()) * (SM_SMALLEST_MS / this->getMicroStepInt());
 }
 
 /**
  * Performs one step of the motor.
- *
- * \param sm The stepper motor to step.
  */
-void smStep(StepperMotor* sm) { smStepExact(sm, sm->half_step_delay); }
+void StepperMotor::step() { this->stepExact(this->half_step_delay); }
 
 /**
  * Homes the stepper motor to find the zero position.
  */
-void smHome(StepperMotor* sm) {
+void StepperMotor::home() {
   // Save current the state of the motor.
-  bool saved_dir = smGetDir(sm);
-  uint saved_ms = smGetMicroStep(sm);
-  uint8_t saved_speed = smGetSpeed(sm);
+  bool saved_dir = this->getDir();
+  uint saved_ms = this->getMicroStep();
+  uint8_t saved_speed = this->getSpeed();
 
   // Set the motor to move in the home direction.
-  smSetDir(sm, HOME_DIR);
+  this->setDir(HOME_DIR);
 
   // Set the micro steps to the most precise.
-  smSetMicroStep(sm, MS_64);
+  this->setMicroStep(MS_64);
 
   // Perform the first home.
-  smSetSpeed(sm, 3);
+  this->setSpeed(3);
   // while (gpio_get(LS_HOME) != 1) smStep(sm);
-  while (!LS_TRIGGERED(LS_HOME)) smStep(sm);
+  while (!LS_TRIGGERED(LS_HOME)) this->step();
 
   // Move back some
-  smSetDir(sm, HOME_DIR ^ 1);
-  smSetSpeed(sm, 3);
-  // while (gpio_get(LS_HOME) == 1) smStep(sm);
-  while (LS_TRIGGERED(LS_HOME)) smStep(sm);
-  uint current_ms = smGetMicroStepInt(sm);
-  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * current_ms * 7); i++) smStep(sm);
+  this->setDir(HOME_DIR ^ 1);
+  this->setSpeed(3);
+  while (LS_TRIGGERED(LS_HOME)) this->step();
+  uint current_ms = this->getMicroStepInt();
+  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * current_ms * 7); i++)
+    this->step();
 
   // Perform the second, slower, home.
-  smSetDir(sm, HOME_DIR);
-  smSetSpeed(sm, 1);
-  while (!LS_TRIGGERED(LS_HOME)) smStep(sm);
+  this->setDir(HOME_DIR);
+  this->setSpeed(1);
+  while (!LS_TRIGGERED(LS_HOME)) step();
 
   // Update the zero position of the motor.
-  sm->step_position = 0;
+  this->step_position = 0;
 
   // Restore the motor settings.
-  smSetDir(sm, saved_dir);
-  smSetMicroStep(sm, saved_ms);
-  smSetSpeed(sm, saved_speed);
+  this->setDir(saved_dir);
+  this->setMicroStep(saved_ms);
+  this->setSpeed(saved_speed);
 }
 
 /**
@@ -440,36 +428,34 @@ void smHome(StepperMotor* sm) {
  * \returns Whether the operation was successful and the motor was not told to
  * stop part way.
  */
-bool smClose(StepperMotor* sm) {
+bool StepperMotor::close() {
   // Set the motor to move in the closing direction.
-  smSetDir(sm, CLOSE_DIR);
+  this->setDir(CLOSE_DIR);
 
   // Reset any call to stop the motor.
-  sm->stop_motor = false;
+  this->stop_motor = false;
 
   // Set the current state.
-  sm->state = SM_STATE_CLOSING;
+  this->state = State::CLOSING;
 
   // Move the motor in the close direction until either:
   // - The motor is told to stop, or
   // - The end stop is found, or
   // - The encoded window position in steps reaches the expected closed
   //   position.
-  // while (!sm->stop_motor && gpio_get(LS_CLOSED) != 1 &&
-  while (!sm->stop_motor && !LS_TRIGGERED(LS_CLOSED) &&
-         sm->step_position != WINDOW_CLOSED_STEP_POSITION)
-    smStep(sm);
+  while (!this->stop_motor && !LS_TRIGGERED(LS_CLOSED) &&
+         this->step_position != WINDOW_CLOSED_STEP_POSITION)
+    this->step();
 
   // Update the motor state.
-  sm->state = (sm->stop_motor) ? SM_STATE_STOPPED : SM_STATE_CLOSED;
-  sm->queued_action = SM_ACTION_NONE;
-  // if (gpio_get(LS_CLOSED) == 1) sm->step_position =
-  // WINDOW_CLOSED_STEP_POSITION;
-  if (LS_TRIGGERED(LS_CLOSED)) sm->step_position = WINDOW_CLOSED_STEP_POSITION;
+  this->state = (this->stop_motor) ? State::STOPPED : State::CLOSED;
+  this->queued_action = Action::NONE;
+  if (LS_TRIGGERED(LS_CLOSED))
+    this->step_position = WINDOW_CLOSED_STEP_POSITION;
 
   // Return true if the motor successfully closed the window and was not called
   // to stop.
-  return !sm->stop_motor;
+  return !this->stop_motor;
 }
 
 /**
@@ -478,35 +464,32 @@ bool smClose(StepperMotor* sm) {
  * \returns Whether the operation was successful and the motor was not told to
  * stop part way.
  */
-bool smOpen(StepperMotor* sm) {
+bool StepperMotor::open() {
   // Set the motor to move in the opening direction.
-  smSetDir(sm, OPEN_DIR);
+  this->setDir(OPEN_DIR);
 
   // Reset any call to stop the motor.
-  sm->stop_motor = false;
+  this->stop_motor = false;
 
   // Set the current state.
-  sm->state = SM_STATE_OPENING;
+  this->state = State::OPENING;
 
   // Move the motor in the open direction until either:
   // - The motor is told to stop, or
   // - The end stop is found, or
   // - The encoded window position in steps reaches the expected open position.
-  // while (!sm->stop_motor && gpio_get(LS_OPEN) != 1 &&
-  while (!sm->stop_motor && !LS_TRIGGERED(LS_OPEN) &&
-         sm->step_position != WINDOW_OPEN_STEP_POSITION)
-    smStep(sm);
+  while (!this->stop_motor && !LS_TRIGGERED(LS_OPEN) &&
+         this->step_position != WINDOW_OPEN_STEP_POSITION)
+    this->step();
 
   // Update the motor state.
-  sm->state = (sm->stop_motor) ? SM_STATE_STOPPED : SM_STATE_OPEN;
-  sm->queued_action = SM_ACTION_NONE;
-  // if (gpio_get(LS_OPEN) == 1) sm->step_position =
-  // WINDOW_CLOSED_STEP_POSITION;
-  if (LS_TRIGGERED(LS_OPEN)) sm->step_position = WINDOW_CLOSED_STEP_POSITION;
+  this->state = (this->stop_motor) ? State::STOPPED : State::OPEN;
+  this->queued_action = Action::NONE;
+  if (LS_TRIGGERED(LS_OPEN)) this->step_position = WINDOW_CLOSED_STEP_POSITION;
 
   // Return true if the motor successfully opened the window and was not called
   // to stop.
-  return !sm->stop_motor;
+  return !this->stop_motor;
 }
 
 /**
@@ -514,106 +497,4 @@ bool smOpen(StepperMotor* sm) {
  *
  * It is up to the other functions to respect this flag.
  */
-void smStop(StepperMotor* sm) { sm->stop_motor = true; }
-
-// // ----- OLD -----
-//
-// static bool stop_motor = false;
-// static uint64_t* motor_half_delay;
-//
-// /**
-//  * Enables the stepper motor.
-//  */
-// void sm_enable() { gpio_put(SM_ENABLE_PIN, 0); }
-//
-// /**
-//  * Disables the stepper motor.
-//  */
-// void sm_disable() { gpio_put(SM_ENABLE_PIN, 1); }
-//
-// void sm_set_speed_ptr(uint64_t* speed) { motor_half_delay = speed; }
-//
-// /**
-//  * Performs one step for the stepper motor.
-//  *
-//  * \param half_delay_us Half of the delay for the step in microseconds.
-//  *   This delay happens once after the pin is set true, and again after
-//  *   the pin is set false.
-//  */
-// void sm_step(uint64_t half_delay_us) {
-//   gpio_put(SM_PULSE_PIN, 1);
-//   sleep_us(half_delay_us);
-//   gpio_put(SM_PULSE_PIN, 0);
-//   sleep_us(half_delay_us);
-// }
-//
-// void sm_set_dir(int dir) { gpio_put(SM_DIR_PIN, dir); }
-//
-// /**
-//  * Returns the current micro-step state.
-//  * Compare against one of MS_8, MS_16, MS_32, MS_64 for a human readable
-//  value.
-//  *
-//  * \returns The current micro-step state in it's binary pin form.
-//  */
-// int get_micro_step() {
-//   return ((gpio_get(SM_MS2_PIN) << 1) & gpio_get(SM_MS1_PIN));
-// }
-//
-// void sm_home() {
-//   sm_set_dir(HOME_DIR);
-//
-//   int home_ls_state = gpio_get(LS_HOME);
-//   printf("Home LS pin state: %d\r", home_ls_state);
-//
-//   int steps_completed = 0;
-//   while (home_ls_state != 1) {
-//     sm_step(*motor_half_delay);
-//     steps_completed++;
-//     home_ls_state = gpio_get(LS_HOME);
-//     printf("Home LS pin state: %d, Steps completed: %d\r", home_ls_state,
-//            steps_completed);
-//   }
-//   printf("\nHomeing Completed. Moving back\n");
-//
-//   sm_set_dir(HOME_DIR ^ 1);
-//
-//   for (int i = 0; i < 2000; i++) {
-//     sm_step(*motor_half_delay);
-//   }
-// }
-//
-// bool sm_close() {
-//   // printf("Closing window...\n");
-//   sm_set_dir(CLOSE_DIR);
-//
-//   // int home_ls_state = gpio_get(LS_CLOSED);
-//
-//   stop_motor = false;
-//   // int steps_completed = 0;
-//   while (gpio_get(LS_CLOSED) != 1 && !stop_motor) {
-//     sm_step(*motor_half_delay);
-//     // steps_completed++;
-//     // home_ls_state = gpio_get(LS_CLOSED);
-//   }
-//   // printf("Window closed.\n");
-//
-//   return !stop_motor;
-// }
-//
-// bool sm_open() {
-//   sm_set_dir(OPEN_DIR);
-//
-//   stop_motor = false;
-//   while (gpio_get(LS_OPEN) != 1 && !stop_motor) {
-//     sm_step(*motor_half_delay);
-//   }
-//
-//   return !stop_motor;
-// }
-//
-// void sm_stop() {
-//   stop_motor = true;
-//   // sleep_ms(5000);
-//   // stop_motor = false;
-// }
+void StepperMotor::stop() { this->stop_motor = true; }
