@@ -34,6 +34,7 @@
 #define MQTT_TOPIC_COMMAND_POSITION_MM MQTT_TOPIC_BASE "cmd/mm"
 #define MQTT_TOPIC_COMMAND_POSITION_PERCENT MQTT_TOPIC_BASE "cmd/percent"
 #define MQTT_TOPIC_SENSOR_MICRO_STEPS MQTT_TOPIC_BASE "snsr/micrstp"
+#define MQTT_TOPIC_SENSOR_HALF_STEP_DELAY MQTT_TOPIC_BASE "snsr/stepdelay"
 
 // ----- Device Discovery -----
 #define HA_DEVICE_MQTT_DISCOVERY_TOPIC "hass/device/" HA_DEVICE_ID "/config"
@@ -120,11 +121,14 @@
   "\"min\":0,"                                                    \
   "\"max\":255,"                                                  \
   "\"mode\":\"box\","                                             \
+  "\"step\":\"0.01\","                                            \
+  "\"device_class\":\"speed\","                                   \
+  "\"unit_of_measurement\":\"mm/s\","                             \
   "\"state_topic\":\"" MQTT_TOPIC_STATE_SPEED                     \
   "\","                                                           \
   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_SPEED                 \
   "\","                                                           \
-  "\"value_template\":\"{{ int(value) }}\","                      \
+  "\"value_template\":\"{{ float(value) }}\","                    \
   "\"command_template\":\"{{ value }}\""                          \
   "},"                                                            \
                                                                   \
@@ -165,8 +169,8 @@
   "\""                                                            \
   "},"                                                            \
   "\"p\":\"number\","                                             \
-  "\"min\":-10000000000000000000," /* 1e19 */                     \
-  "\"max\":10000000000000000000,"  /* 1e19 */                     \
+  "\"min\":-100000000000," /* 1e */                               \
+  "\"max\":1000000000000," /* 1e */                               \
   "\"mode\":\"box\","                                             \
   "\"step\":\"0.1\","                                             \
   "\"unit_of_measurement\":\"mm\","                               \
@@ -214,6 +218,26 @@
   "\"state_topic\":\"" MQTT_TOPIC_SENSOR_MICRO_STEPS              \
   "\","                                                           \
   "\"qos\":1"                                                     \
+  "},"                                                            \
+                                                                  \
+  /* Step Delay Sensor */                                         \
+  "\"" HA_DEVICE_ID                                               \
+  "-Half_Step_Delay_Sensor\":{"                                   \
+  "\"name\":\"Half Step Delay\","                                 \
+  "\"unique_id\":\"" HA_DEVICE_ID                                 \
+  "-Half_Step_Delay_Sensor\","                                    \
+  "\"optimistic\":\"false\","                                     \
+  "\"availability\":{"                                            \
+  "\"payload_available\":\"online\","                             \
+  "\"payload_not_available\":\"offline\","                        \
+  "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
+  "\""                                                            \
+  "},"                                                            \
+  "\"p\":\"sensor\","                                             \ 
+  "\"device_class\":\"duration\","                                \
+  "\"unit_of_measurement\":\"µs\","                               \
+  "\"state_topic\":\"" MQTT_TOPIC_SENSOR_HALF_STEP_DELAY          \
+  "\""                                                            \
   "}"                                                             \
                                                                   \
   "},"                                                            \

@@ -6,6 +6,16 @@
 
 #include "limit_switch.h"
 
+#define SM_MS8_MIN_HALF_DELAY 85
+#define SM_MS16_MIN_HALF_DELAY 42
+#define SM_MS32_MIN_HALF_DELAY 21  // Done
+#define SM_MS64_MIN_HALF_DELAY 11  // Done
+
+#define SM_MS8_MIN_HALF_DELAY_QUIET 602
+#define SM_MS16_MIN_HALF_DELAY_QUIET 301
+#define SM_MS32_MIN_HALF_DELAY_QUIET 161
+#define SM_MS64_MIN_HALF_DELAY_QUIET 75
+
 enum StepperMotorAction { SM_ACTION_NONE, SM_ACTION_OPEN, SM_ACTION_CLOSE };
 
 enum StepperMotorState {
@@ -39,14 +49,14 @@ typedef struct StepperMotor {
   bool stop_motor;
   int64_t step_position;
   uint64_t half_step_delay;
-  uint8_t speed;
+  float speed;
 } StepperMotor;
 
 void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
             uint pulse_pin, uint micro_step_1_pin, uint micro_step_2_pin,
             // LimitSwitch* closed_limit_switch, LimitSwitch* open_limit_switch,
             // LimitSwitch* home_limit_switch,
-            uint initial_micro_step, uint8_t initial_speed);
+            uint initial_micro_step, float initial_speed);
 
 uint smGetMicroStep(StepperMotor* sm);
 uint smGetMicroStepInt(StepperMotor* sm);
@@ -59,8 +69,8 @@ void smSetDir(StepperMotor* sm, bool dir);
 bool smGetDir(StepperMotor* sm);
 void smSwapDir(StepperMotor* sm);
 
-void smSetSpeed(StepperMotor* sm, uint8_t speed);
-uint64_t smGetSpeed(StepperMotor* sm);
+void smSetSpeed(StepperMotor* sm, float speed);
+float smGetSpeed(StepperMotor* sm);
 
 void smSetQuietMode(StepperMotor* sm, bool mode);
 

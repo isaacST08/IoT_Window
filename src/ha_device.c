@@ -141,8 +141,8 @@ bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
 // **===========================================================**
 
 void publishStepperMotorSpeed() {
-  char buf[8];
-  sprintf(buf, "%d", window_stepper_motor->speed);
+  char buf[16];
+  sprintf(buf, "%.2f", window_stepper_motor->speed);
   basicMqttPublish(MQTT_TOPIC_STATE_SPEED, buf, 1, 0);
 }
 
@@ -216,6 +216,12 @@ void publishStepperMotorMicroSteps() {
   basicMqttPublish(MQTT_TOPIC_SENSOR_MICRO_STEPS, buf, 1, 0);
 }
 
+void publishStepperMotorHalfStepDelay() {
+  char buf[16];
+  sprintf(buf, "%llu", window_stepper_motor->half_step_delay);
+  basicMqttPublish(MQTT_TOPIC_SENSOR_HALF_STEP_DELAY, buf, 1, 0);
+}
+
 void publishAll() {
   publishStepperMotorSpeed();
   publishStepperMotorQuietMode();
@@ -224,6 +230,7 @@ void publishAll() {
   publishStepperMotorPositionSteps();
   publishStepperMotorPositionMM();
   publishStepperMotorMicroSteps();
+  publishStepperMotorHalfStepDelay();
 }
 
 // **===============================================**
@@ -444,9 +451,9 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         break;
       }
       case SPEED: {
-        uint8_t new_speed = atoi((char*)data);
-        if (new_speed < 1) new_speed = 1;
-        printf("Setting motor speed to %u\n", new_speed);
+        float new_speed = atof((char*)data);
+        if (new_speed < 0.01) new_speed = 0.01;
+        printf("Setting motor speed to %f\n", new_speed);
         smSetSpeed(window_stepper_motor, new_speed);
         publishStepperMotorSpeed();
         publishStepperMotorMicroSteps();

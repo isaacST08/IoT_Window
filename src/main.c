@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "advanced_opts.h"
 #include "common.h"
 #include "ha_device.h"
 #include "limit_switch.h"

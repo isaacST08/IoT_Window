@@ -1,6 +1,7 @@
 #include "stepper_motor.h"
 
 #include <hardware/gpio.h>
+#include <math.h>
 #include <pico/time.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,6 +12,9 @@
 #include "limit_switch.h"
 #include "opts.h"
 #include "pins.h"
+
+#define MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(mm_per_sec, micro_step) \
+  ceil(1000000.0 / (mm_per_sec * SM_FULL_STEPS_PER_MM * micro_step * 2))
 
 /**
  * Initialize a stepper motor object.
@@ -28,7 +32,7 @@
  */
 void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
             uint pulse_pin, uint micro_step_1_pin, uint micro_step_2_pin,
-            uint initial_micro_step, uint8_t initial_speed) {
+            uint initial_micro_step, float initial_speed) {
   // Set stepper motor pins.
   sm->pins.enable = enable_pin;
   sm->pins.direction = direction_pin;
@@ -227,13 +231,75 @@ void smSwapDir(StepperMotor* sm) { smSetDir(sm, smGetDir(sm) ^ 1); }
  * \param sm The stepper motor to set the speed of.
  * \param speed The speed to set the motor to.
  */
-void smSetSpeed(StepperMotor* sm, uint8_t speed) {
+void smSetSpeed(StepperMotor* sm, float speed) {
   sm->speed = speed;
   // sm->half_step_delay = speed * MIN_US_PER_HALF_SMALLEST_MS +
   //                       ((sm->quiet_mode) ? SM_QUIET_MODE_ADDITIONAL_US : 0);
-  sm->half_step_delay = (speed + sm->quiet_mode * 4) *
-                        MIN_US_PER_HALF_SMALLEST_MS *
-                        (SM_SMALLEST_MS / smGetMicroStepInt(sm));
+  // sm->half_step_delay = (speed + sm->quiet_mode * 4) *
+  //                       MIN_US_PER_HALF_SMALLEST_MS *
+  //                       (SM_SMALLEST_MS / smGetMicroStepInt(sm));
+
+  // sm->half_step_delay = SM_FULL_STEPS_PER_MM * smGetMicroStepInt(sm)
+  // sm->half_step_delay = ceil(1000000.0 / (speed * SM_FULL_STEPS_PER_MM * 2));
+
+  if (sm->quiet_mode) {
+    uint64_t half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 64);
+    smSetMicroStep(sm, MS_64);
+    sm->half_step_delay = (SM_MS64_MIN_HALF_DELAY_QUIET < half_step_delay)
+                              ? half_step_delay
+                              : SM_MS64_MIN_HALF_DELAY_QUIET;
+  } else {
+    uint64_t possible_half_step_delay;
+    uint64_t chosen_half_step_delay;
+    uint chosen_micro_step_int;
+    uint chosen_micro_step;
+
+    // --- MS 64 ---
+    possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 64);
+    if (SM_MS64_MIN_HALF_DELAY < possible_half_step_delay) {
+      chosen_half_step_delay = possible_half_step_delay;
+      chosen_micro_step_int = 64;
+      chosen_micro_step = MS_64;
+    } else {
+      chosen_half_step_delay = SM_MS64_MIN_HALF_DELAY;
+      chosen_micro_step_int = 64;
+      chosen_micro_step = MS_64;
+    }
+
+    // --- MS 32 ---
+    possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 32);
+    if (SM_MS32_MIN_HALF_DELAY < possible_half_step_delay &&
+        possible_half_step_delay <
+            (chosen_half_step_delay - 1) * (chosen_micro_step_int / 32)) {
+      chosen_half_step_delay = possible_half_step_delay;
+      chosen_micro_step_int = 32;
+      chosen_micro_step = MS_32;
+    }
+
+    // --- MS 16 ---
+    possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 16);
+    if (SM_MS16_MIN_HALF_DELAY < possible_half_step_delay &&
+        possible_half_step_delay <
+            (chosen_half_step_delay - 1) * (chosen_micro_step_int / 16)) {
+      chosen_half_step_delay = possible_half_step_delay;
+      chosen_micro_step_int = 16;
+      chosen_micro_step = MS_16;
+    }
+
+    // --- MS 8 ---
+    possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 8);
+    if (SM_MS8_MIN_HALF_DELAY < possible_half_step_delay &&
+        possible_half_step_delay <
+            (chosen_half_step_delay - 1) * (chosen_micro_step_int / 8)) {
+      chosen_half_step_delay = possible_half_step_delay;
+      chosen_micro_step_int = 8;
+      chosen_micro_step = MS_8;
+    }
+
+    // Set determined values.
+    smSetMicroStep(sm, chosen_micro_step);
+    sm->half_step_delay = chosen_half_step_delay;
+  }
 }
 
 /**
@@ -248,7 +314,7 @@ void smSetSpeed(StepperMotor* sm, uint8_t speed) {
  * \returns The speed the motor is set to. This value relates to half of the
  * delay per micro step in micro seconds.
  */
-uint64_t smGetSpeed(StepperMotor* sm) { return sm->speed; }
+float smGetSpeed(StepperMotor* sm) { return sm->speed; }
 
 /**
  * Sets the quiet mode for the motor.
@@ -342,22 +408,22 @@ void smHome(StepperMotor* sm) {
   smSetMicroStep(sm, MS_64);
 
   // Perform the first home.
-  smSetSpeed(sm, 2);
+  smSetSpeed(sm, 3);
   // while (gpio_get(LS_HOME) != 1) smStep(sm);
   while (!LS_TRIGGERED(LS_HOME)) smStep(sm);
 
   // Move back some
   smSetDir(sm, HOME_DIR ^ 1);
-  smSetSpeed(sm, 1);
+  smSetSpeed(sm, 3);
   // while (gpio_get(LS_HOME) == 1) smStep(sm);
   while (LS_TRIGGERED(LS_HOME)) smStep(sm);
-  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS * 8); i++)
-    smStep(sm);
+  uint current_ms = smGetMicroStepInt(sm);
+  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * current_ms * 7); i++) smStep(sm);
 
   // Perform the second, slower, home.
   smSetDir(sm, HOME_DIR);
-  smSetSpeed(sm, 4);
-  while (gpio_get(LS_HOME) != 1) smStep(sm);
+  smSetSpeed(sm, 1);
+  while (!LS_TRIGGERED(LS_HOME)) smStep(sm);
 
   // Update the zero position of the motor.
   sm->step_position = 0;
