@@ -1,11 +1,11 @@
-#ifndef HA_DEVICE_H
-#define HA_DEVICE_H
+#ifndef HA_DEVICE_HH
+#define HA_DEVICE_HH
 
 #include <lwip/apps/mqtt.h>
 #include <stdbool.h>
 
 #include "common.h"
-#include "stepper_motor.h"
+#include "stepper_motor.hh"
 
 // enum DeviceState { OPEN, OPENING, CLOSED, CLOSING, STOPPED };
 
@@ -298,9 +298,11 @@
 
 bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
                       u8_t retain);
-void updateState(enum StepperMotorAction device_state);
+// void updateState(enum StepperMotorAction device_state);
+void updateState(stepper_motor::Action device_state);
 bool mqttDoConnect(mqtt_client_t* client);
-void haDeviceSetup(mqtt_client_t* client, StepperMotor* stepper_motor);
+void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm);
+// void haDeviceSetup(mqtt_client_t* client, StepperMotor* stepper_motor);
 
 void publishStepperMotorSpeed();
 void publishStepperMotorQuietMode();

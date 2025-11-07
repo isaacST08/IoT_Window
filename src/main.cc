@@ -21,7 +21,7 @@
 #include "pico/stdlib.h"
 #include "pins.h"
 #include "secrets.h"
-#include "stepper_motor.h"
+#include "stepper_motor.hh"
 
 int main() {
   stdio_init_all();
@@ -86,9 +86,11 @@ int main() {
   // }
 
   // Initialize Stepper Motor.
-  StepperMotor stepper_motor;
-  smInit(&stepper_motor, SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN, SM_MS1_PIN,
-         SM_MS2_PIN, MS_64, 1);
+  stepper_motor::StepperMotor window_sm(SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN,
+                                        SM_MS1_PIN, SM_MS2_PIN, MS_64, 1);
+  // stepper_motor::StepperMotor window_stepper_motor;
+  // smInit(&stepper_motor, SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN, SM_MS1_PIN,
+  //        SM_MS2_PIN, MS_64, 1);
 
   // MQTT Setup
   printf("Setting up mqtt...\n");
@@ -134,9 +136,11 @@ int main() {
   cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
 
   cyw43_arch_lwip_begin();
-  smEnable(&stepper_motor);
+  window_sm.enable();
+  // smEnable(&stepper_motor);
   printf("Homeing...\n");
-  smHome(&stepper_motor);
+  // smHome(&stepper_motor);
+  window_sm.home();
   printf("Homeing Complete.\n");
   cyw43_arch_lwip_end();
 
@@ -144,12 +148,12 @@ int main() {
     gpio_put(RED_LED_PIN, cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
                               CYW43_LINK_JOIN);
 
-    if (stepper_motor.queued_action != SM_ACTION_NONE) {
-      printf("Queued motor move: %d\n", stepper_motor.queued_action);
-      switch (stepper_motor.queued_action) {
-        case SM_ACTION_OPEN: {
+    if (window_sm.getQueuedAction() != stepper_motor::Action::NONE) {
+      printf("Queued motor move: %d\n", window_sm.getQueuedAction());
+      switch (window_sm.getQueuedAction()) {
+        case stepper_motor::Action::OPEN: {
           printf("Open motor activated\n");
-          bool open_success = smOpen(&stepper_motor);
+          bool open_success = window_sm.open();
           // if (open_success) {
           //   // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "open", 1, 0);
           //   // updateState(OPEN);
@@ -160,8 +164,8 @@ int main() {
           // queued_motor_move = STOPPED;
           break;
         }
-        case SM_ACTION_CLOSE: {
-          bool close_success = smClose(&stepper_motor);
+        case stepper_motor::Action::CLOSE: {
+          bool close_success = window_sm.close();
           // if (close_success) {
           //   // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "close", 1, 0);
           //   updateState(CLOSED);
@@ -171,7 +175,7 @@ int main() {
           // queued_motor_move = STOPPED;
           break;
         }
-        case SM_ACTION_NONE:
+        case stepper_motor::Action::NONE:
           break;
           // default:
           //   // queued_motor_move = STOPPED;

@@ -69,6 +69,7 @@ class StepperMotor {
   float getSpeed();
 
   void setQuietMode(bool mode);
+  bool getQuietMode();
 
   uint64_t getPosition();
   int getPositionPercentage();
@@ -81,6 +82,14 @@ class StepperMotor {
   bool open();
 
   void stop();
+
+  Action getQueuedAction();
+  void queueAction(Action action);
+
+  State getState();
+  void setState(State state);
+
+  uint64_t getHalfStepDelay();
 
  private:
   Action queued_action;

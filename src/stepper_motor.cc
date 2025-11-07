@@ -31,9 +31,11 @@ using namespace stepper_motor;
  * \param initial_micro_step The initial micros step to set the motor to.
  * \param initial_speed The initial speed to set the motor to.
  */
-StepperMotor::StepperMotor(uint enable_pin, uint direction_pin, uint pulse_pin,
-                           uint micro_step_1_pin, uint micro_step_2_pin,
-                           uint initial_micro_step, float initial_speed) {
+stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
+                                          uint pulse_pin, uint micro_step_1_pin,
+                                          uint micro_step_2_pin,
+                                          uint initial_micro_step,
+                                          float initial_speed) {
   // Set stepper motor pins.
   this->pins.enable = enable_pin;
   this->pins.direction = direction_pin;
@@ -321,6 +323,11 @@ void StepperMotor::setQuietMode(bool mode) {
 }
 
 /**
+ * Gets the current quiet mode of the motor.
+ */
+bool StepperMotor::getQuietMode() { return this->quiet_mode; }
+
+/**
  * Get the current position of the motor in increments of the smallest micro
  * step (step distance largest, not integer largest. So 64MS < 16MS.).
  */
@@ -498,3 +505,30 @@ bool StepperMotor::open() {
  * It is up to the other functions to respect this flag.
  */
 void StepperMotor::stop() { this->stop_motor = true; }
+
+/**
+ * Gets the action currently queued for the motor.
+ */
+Action StepperMotor::getQueuedAction() { return this->queued_action; }
+
+/**
+ * Adds the desired action as the next action to perform for this motor.
+ *
+ * This is a queue of length 1.
+ */
+void StepperMotor::queueAction(Action action) { this->queued_action = action; }
+
+/**
+ * Gets the current state of the motor.
+ */
+State StepperMotor::getState() { return this->state; }
+
+/**
+ * Sets the current working state of the motor.
+ */
+void StepperMotor::setState(State state) { this->state = state; }
+
+/**
+ * Gets the current half step delay of the motor.
+ */
+uint64_t StepperMotor::getHalfStepDelay() { return this->half_step_delay; }
