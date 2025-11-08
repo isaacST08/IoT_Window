@@ -22,8 +22,25 @@ build/$(PROJECT).uf2 build/$(PROJECT).elf: build FORCE
 disasm: build/$(PROJECT).elf
 	$(TOOLCHAIN_PREFIX)objdump -C -S build/$(PROJECT).elf
 
-build:
+build: secrets.h
 	cmake -B build -DCMAKE_VERBOSE_MAKEFILE=ON -DPICO_BOARD=$(BOARD)
+
+secrets.h:
+	if [ ! -f src/secrets.h ]; then \
+		echo "Missing secrets file! Generating..."; \
+		echo "#ifndef SECRETS_H" >> src/secrets.h; \
+		echo "#define SECRETS_H" >> src/secrets.h; \
+		echo "" >> src/secrets.h; \
+		echo "#define WIFI_SSID \"myWiFiSSID\"" >> src/secrets.h; \
+		echo "#define WIFI_PASSWORD \"superSecretPassword\"" >> src/secrets.h; \
+		echo "" >> src/secrets.h; \
+		echo "#define MQTT_SERVER \"localhost\"" >> src/secrets.h; \
+		echo "#define MQTT_PORT 1883" >> src/secrets.h; \
+		echo "#define MQTT_USER \"hass\"" >> src/secrets.h; \
+		echo "#define MQTT_PASSWORD \"hassPassword\"" >> src/secrets.h; \
+		echo "" >> src/secrets.h; \
+		echo "#endif" >> src/secrets.h; \
+	fi
 
 clean:
 	rm -rf build
