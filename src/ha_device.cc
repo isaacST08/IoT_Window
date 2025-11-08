@@ -10,12 +10,14 @@
 #include <string.h>
 
 #include "advanced_opts.h"
-#include "common.h"
 #include "opts.h"
 #include "pico/cyw43_arch.h"
-#include "pins.h"
 #include "secrets.h"
 #include "stepper_motor.hh"
+
+extern "C" {
+#include "pins.h"
+}
 
 #define MQTT_SUBSCRIBE(client, topic, err)                                \
   for (int i = 0; i < 3; i++) {                                           \

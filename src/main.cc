@@ -5,23 +5,21 @@
 #include <lwip/err.h>
 #include <lwip/ip4_addr.h>
 #include <lwip/ip_addr.h>
+#include <pico/stdio.h>
 #include <pico/time.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
 
-#include "advanced_opts.h"
-#include "common.h"
-#include "ha_device.h"
-#include "limit_switch.h"
+#include <cstdio>
+
+#include "ha_device.hh"
 #include "lwip/apps/mqtt.h"
-#include "network.h"
-#include "pico/async_context.h"
 #include "pico/cyw43_arch.h"
-#include "pico/stdlib.h"
-#include "pins.h"
-#include "secrets.h"
 #include "stepper_motor.hh"
+
+extern "C" {
+#include "network.h"
+#include "pins.h"
+}
 
 int main() {
   stdio_init_all();
@@ -122,7 +120,7 @@ int main() {
   // printf("MQTT setup finished\n");
   // cyw43_arch_lwip_end();
 
-  haDeviceSetup(mqtt_client, &stepper_motor);
+  haDeviceSetup(mqtt_client, &window_sm);
   // bool ha_dev_discovery_msg_sent;
   // do {
   //   ha_dev_discovery_msg_sent = haDeviceSetup(mqtt_client, &stepper_motor);

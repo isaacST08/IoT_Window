@@ -8,10 +8,12 @@
 #include <stdio.h>
 
 #include "advanced_opts.h"
-#include "common.h"
 #include "limit_switch.h"
 #include "opts.h"
+
+extern "C" {
 #include "pins.h"
+}
 
 using namespace stepper_motor;
 
