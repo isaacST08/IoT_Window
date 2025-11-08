@@ -8,6 +8,7 @@
 #include <pico/stdio.h>
 #include <pico/time.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include <cstdio>
 
@@ -107,6 +108,10 @@ int main() {
   bool mqtt_setup_success;
   do {
     mqtt_setup_success = mqttDoConnect(mqtt_client);
+
+    // Give MQTT subscribe requests that happen in the callback a chance to
+    // complete.
+    sleep_ms(1000);
   } while (!mqtt_setup_success);
   printf("MQTT setup finished.\n");
 

@@ -21,9 +21,9 @@ extern "C" {
 
 #define MQTT_SUBSCRIBE(client, topic, err)                                \
   for (int i = 0; i < 3; i++) {                                           \
-    cyw43_arch_lwip_begin();                                              \
+    /* cyw43_arch_lwip_begin(); */                                        \
     err = mqtt_sub_unsub(client, topic, 1, mqttSubRequestCb, NULL, true); \
-    cyw43_arch_lwip_end();                                                \
+    /* cyw43_arch_lwip_end(); */                                          \
     if (err != ERR_OK) {                                                  \
       printf("Failed to subscribe to %s with error %d\n", topic, err);    \
       for (int i = 0; i < 2; i++) {                                       \
@@ -32,8 +32,10 @@ extern "C" {
         gpio_put(YELLOW_LED_PIN, 0);                                      \
         sleep_ms(100);                                                    \
       }                                                                   \
-    } else                                                                \
+    } else {                                                              \
+      printf("Succesfully subscribed to %s\n", topic);                    \
       break;                                                              \
+    }                                                                     \
   }                                                                       \
   sleep_ms(150);
 
@@ -195,19 +197,19 @@ void publishStepperMotorState() {
   // switch (window_stepper_motor->state) {
   switch (window_sm->getState()) {
     case stepper_motor::State::OPEN:
-      payload = "open";
+      payload = (char*)"open";
       break;
     case stepper_motor::State::OPENING:
-      payload = "opening";
+      payload = (char*)"opening";
       break;
     case stepper_motor::State::CLOSED:
-      payload = "closed";
+      payload = (char*)"closed";
       break;
     case stepper_motor::State::CLOSING:
-      payload = "closing";
+      payload = (char*)"closing";
       break;
     case stepper_motor::State::STOPPED:
-      payload = "stopped";
+      payload = (char*)"stopped";
       break;
   }
   basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, payload, 1, 0);
@@ -492,68 +494,16 @@ static void mqttConnectionCb(mqtt_client_t* client, void* arg,
     mqtt_set_inpub_callback(client, mqttIncomingPublishCb, mqttIncomingDataCb,
                             arg);
 
-    // Subscribe to the general command topic.
-    // err = mqtt_subscribe(client, MQTT_TOPIC_COMMAND_SPEED, 1,
-    // mqttSubRequestCb,
-    //                      arg);
-    // err = mqtt_subscribe(client, MQTT_TOPIC_COMMAND_GENERAL, 1,
-    //                      mqttSubRequestCb, arg);
-    // err = mqtt_subscribe(client, MQTT_TOPIC_COMMAND_POSITION_PERCENT, 1,
-    //                      mqttSubRequestCb, arg);
-    // err = mqtt_subscribe(client, MQTT_TOPIC_COMMAND_POSITION_STEPS, 1,
-    //                      mqttSubRequestCb, arg);
-    // err = mqtt_subscribe(client, MQTT_TOPIC_COMMAND_POSITION_MM, 1,
-    //                      mqttSubRequestCb, arg);
-    // err = mqtt_subscribe(client, MQTT_TOPIC_COMMAND_QUIET, 1,
-    // mqttSubRequestCb,
-    //                      arg);
+    // Subscribe to topics.
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_GENERAL, err);
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_SPEED, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_QUIET, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_MM, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_STEPS, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_PERCENT, err)
-    // cyw43_arch_lwip_begin();
-    // err = mqtt_sub_unsub(client, MQTT_TOPIC_COMMAND_GENERAL, 1,
-    //                      mqttSubRequestCb, NULL, true);
-    // if (err != ERR_OK) {
-    //   printf("cmd gnrl mqtt_sub return %d\n", err);
-    //   for (int i = 0; i < 6; i++) {
-    //     gpio_put(YELLOW_LED_PIN, 1);
-    //     sleep_ms(100);
-    //     gpio_put(YELLOW_LED_PIN, 0);
-    //     sleep_ms(100);
-    //   }
-    // }
-    // err = mqtt_sub_unsub(client, MQTT_TOPIC_COMMAND_SPEED, 1,
-    // mqttSubRequestCb,
-    //                      NULL, true);
-    // while (err != ERR_OK) {
-    //   for (int i = 0; i < 6; i++) {
-    //     gpio_put(RED_LED_PIN, 1);
-    //     gpio_put(GREEN_LED_PIN, 1);
-    //     sleep_ms(100);
-    //     gpio_put(RED_LED_PIN, 0);
-    //     gpio_put(GREEN_LED_PIN, 0);
-    //     sleep_ms(100);
-    //   }
-    //   cyw43_arch_lwip_begin();
-    //   err = mqtt_sub_unsub(client, MQTT_TOPIC_COMMAND_SPEED, 1,
-    //                        mqttSubRequestCb, NULL, true);
-    //   cyw43_arch_lwip_end();
-    // }
 
-    // if (err != ERR_OK) {
-    //   printf("cmd speed mqtt_sub return %d\n", err);
-    //   for (int i = 0; i < 6; i++) {
-    //     gpio_put(YELLOW_LED_PIN, 1);
-    //     sleep_ms(100);
-    //     gpio_put(YELLOW_LED_PIN, 0);
-    //     sleep_ms(100);
-    //   }
-    // }
-    // cyw43_arch_lwip_end();
   } else {
+    // On error, blink error code and try to reconnect.
     for (int i = 0; i < 2; i++) {
       gpio_put(RED_LED_PIN, 1);
       gpio_put(YELLOW_LED_PIN, 1);
