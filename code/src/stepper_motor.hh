@@ -1,5 +1,6 @@
 #ifndef STEPPER_MOTOR_HH
 #define STEPPER_MOTOR_HH
+#include <common.h>
 #include <pico/types.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -15,6 +16,9 @@
 #define SM_MS16_MIN_HALF_DELAY_QUIET 301
 #define SM_MS32_MIN_HALF_DELAY_QUIET 161
 #define SM_MS64_MIN_HALF_DELAY_QUIET 75
+
+#define SM_SOFT_START_HALF_DELAY 1000
+#define SM_SOFT_START_INCREASE_FACTOR 50
 
 namespace stepper_motor {
 
@@ -58,38 +62,59 @@ class StepperMotor {
   uint getMicroStepInt();
   void setMicroStep(uint micro_step);
 
+  // --- Basic ---
   void enable();
   void disable();
 
-  void setDir(bool dir);
-  bool getDir();
+  // --- Direction ---
+  void setDir(direction_t dir);
+  direction_t getDir();
   void swapDir();
 
+  // --- Speed ---
   void setSpeed(float speed);
   float getSpeed();
 
+  // --- Quiet Mode ---
   void setQuietMode(bool mode);
   bool getQuietMode();
 
+  // --- Position ---
   uint64_t getPosition();
   int getPositionPercentage();
+  float getPositionPercentageExact();
 
+  float stepsToPercentage(uint64_t steps);
+  uint64_t percentageToSteps(float percentage);
+
+  void moveToPosition(uint64_t step, bool soft_start);
+  void moveToPositionPercentage(float percent, bool soft_start);
+
+  // --- Steps ---
   void stepExact(uint64_t half_step_delay);
   void step();
 
+  void moveSteps(uint64_t steps, direction_t dir, bool soft_start);
+
+  void softStart(uint64_t* steps_remaining,
+                 uint64_t initial_speed_half_step_delay);
+
+  uint64_t getHalfStepDelay();
+
+  // --- End Stops & Homing ---
   void home();
   bool close();
   bool open();
 
   void stop();
 
+  // --- Action Queueing ---
   Action getQueuedAction();
   void queueAction(Action action);
 
+  // --- States ---
   State getState();
   void setState(State state);
-
-  uint64_t getHalfStepDelay();
 
  private:
   Action queued_action;

@@ -2,12 +2,14 @@
 
 #include <hardware/gpio.h>
 #include <math.h>
+#include <pico/platform/compiler.h>
 #include <pico/time.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include "advanced_opts.h"
+#include "common.h"
 #include "limit_switch.h"
 #include "opts.h"
 
@@ -208,7 +210,9 @@ void StepperMotor::disable() { gpio_put(this->pins.enable, 1); }
  * \param dir The direction to set.
  *            0 is clockwise, 1 is counter clockwise.
  */
-void StepperMotor::setDir(bool dir) { gpio_put(this->pins.direction, dir); }
+void StepperMotor::setDir(direction_t dir) {
+  gpio_put(this->pins.direction, dir);
+}
 
 /**
  * Gets the current direction of the stepper motor.
@@ -216,7 +220,7 @@ void StepperMotor::setDir(bool dir) { gpio_put(this->pins.direction, dir); }
  * \returns The current direction of the motor.
  *          0 is clockwise, 1 is counter clockwise.
  */
-bool StepperMotor::getDir() { return gpio_get(this->pins.direction); }
+direction_t StepperMotor::getDir() { return gpio_get(this->pins.direction); }
 
 /**
  * Swaps the current direction of the stepper motor.
@@ -340,21 +344,51 @@ uint64_t StepperMotor::getPosition() { return this->step_position; }
  * step (step distance largest, not integer largest. So 64MS < 16MS.).
  */
 int StepperMotor::getPositionPercentage() {
-  printf("Motor steps: %lld\n", this->step_position);
-  printf("Window width mm: %d\n", WINDOW_WIDTH_MM);
-  printf("Window width full steps: %d\n",
-         WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM);
-  printf("Window width micro steps: %d\n",
-         WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS);
-  printf("Motor position percentage long: %llu\n",
-         (100 * this->step_position) /
-             (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-  printf("Motor position percentage int: %d\n",
-         (int)(100 * this->step_position) /
-             (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-  return ((100 * this->step_position) /
-          (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+  // printf("Motor steps: %lld\n", this->step_position);
+  // printf("Window width mm: %d\n", WINDOW_WIDTH_MM);
+  // printf("Window width full steps: %d\n",
+  //        WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM);
+  // printf("Window width micro steps: %d\n",
+  //        WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS);
+  // printf("Motor position percentage long: %llu\n",
+  //        (100 * this->step_position) /
+  //            (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+  // printf("Motor position percentage int: %d\n",
+  //        (int)(100 * this->step_position) /
+  //            (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+  // return ((100 * this->step_position) /
+  //         (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+  return (int)round(this->getPositionPercentageExact());
 }
+
+float StepperMotor::getPositionPercentageExact() {
+  return this->stepsToPercentage(this->step_position);
+}
+
+/**
+ * Converts a number of steps representing the number of steps that the window
+ * is open to the percentage that the window is open.
+ *
+ * @param steps The number of steps to convert.
+ * @return The percentage the number of steps represents.
+ */
+float StepperMotor::stepsToPercentage(uint64_t steps) {
+  return ((100.0 * this->step_position) /
+          (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+};
+
+/**
+ * Converts a percentage representing the percentage that the window is open to
+ * the number of steps that the window is open.
+ *
+ * @param percentage The percentage to convert.
+ * @return The number of steps the percentage represents.
+ */
+uint64_t StepperMotor::percentageToSteps(float percentage) {
+  return ((uint64_t)llround(
+      percentage * (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS) /
+      100));
+};
 
 /**
  * Performs one step of the motor with a total step time of double the
@@ -534,3 +568,102 @@ void StepperMotor::setState(State state) { this->state = state; }
  * Gets the current half step delay of the motor.
  */
 uint64_t StepperMotor::getHalfStepDelay() { return this->half_step_delay; }
+
+/**
+ * Starts the motor moving softly.
+ *
+ * Starts the speed slow and ramps it up.
+ *
+ * @param steps_remaining A pointer to the number of steps remaining for this
+ * move. Will not go past this many steps, even if the number of steps is too
+ * few to complete the soft start. The value will be decremented to keep steps
+ * aligned with the caller. If NULL, then will be ignored.
+ * @param initial_speed_half_step_delay The half step delay in micro seconds for
+ * the initial step of the soft start. The speed will be increased from here.
+ */
+void StepperMotor::softStart(uint64_t* steps_remaining,
+                             uint64_t initial_speed_half_step_delay) {
+  // Get the bounding limit switch for the current direction.
+  int ls = (this->getDir() == LEFT_DIR) ? LS_LEFT : LS_RIGHT;
+
+  uint64_t full_speed_hs_delay = this->getHalfStepDelay();
+  uint64_t current_speed_hs_delay = SM_SOFT_START_HALF_DELAY;
+
+  if (steps_remaining == NULL) {
+    while (current_speed_hs_delay > full_speed_hs_delay && !LS_TRIGGERED(ls)) {
+      this->stepExact(current_speed_hs_delay);
+      current_speed_hs_delay -= SM_SOFT_START_INCREASE_FACTOR;
+    }
+  } else {
+    while (*steps_remaining > 0 &&
+           current_speed_hs_delay > full_speed_hs_delay && !LS_TRIGGERED(ls)) {
+      this->stepExact(current_speed_hs_delay);
+      (*steps_remaining)--;
+      current_speed_hs_delay -= SM_SOFT_START_INCREASE_FACTOR;
+    }
+  }
+}
+
+/**
+ * Move `steps` number of steps in the provided direction.
+ *
+ * @param steps The number of steps to move.
+ * @param dir The direction to move in.
+ * @param soft_start Whether to soft start the movement.
+ */
+void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
+  uint64_t steps_remaining = steps;
+
+  // Determine which limit switch will be the edge of this direction.
+  int limit_switch = (dir == LEFT_DIR) ? LS_LEFT : LS_RIGHT;
+
+  // Change the motor direction.
+  this->setDir(dir);
+
+  // Provide a soft start if requested.
+  if (soft_start) this->softStart(&steps_remaining, SM_SOFT_START_HALF_DELAY);
+
+  // Move the rest of the steps at the default speed.
+  while (steps_remaining > 0 && !LS_TRIGGERED(limit_switch)) {
+    this->step();
+    steps_remaining--;
+  }
+};
+
+/**
+ * Moves the window to an absolute position in steps.
+ *
+ * @param step The absolute step position to move the motor to.
+ */
+void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
+  uint64_t current_step_position = this->getPosition();
+
+  // Determine the number of steps required to make up the difference between
+  // the current step position and the desired step position, as well as the
+  // direction needed to get there.
+  uint64_t step_delta;
+  direction_t dir;
+  if (step > current_step_position) {
+    dir = OPEN_DIR;
+    step_delta = step - current_step_position;
+  } else {
+    dir = CLOSE_DIR;
+    step_delta = current_step_position - step;
+  }
+
+  // Move the steps to move to the desired position.
+  this->moveSteps(step_delta, dir, soft_start);
+};
+
+/**
+ * Moves the window open to a certain percentage.
+ *
+ * @param percent The open percentage to set the window to.
+ */
+void StepperMotor::moveToPositionPercentage(float percent, bool soft_start) {
+  // Clamp and convert the percentage to the equivalent position in steps.
+  uint64_t step_position = this->percentageToSteps(CLAMP(percent, 0.0, 100.0));
+
+  // Move to that position.
+  this->moveToPosition(step_position, soft_start);
+};
