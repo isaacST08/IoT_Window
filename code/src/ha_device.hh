@@ -4,40 +4,10 @@
 #include <lwip/apps/mqtt.h>
 #include <stdbool.h>
 
-#include "common.h"
+#include "ha_device_info.hh"
+#include "mqtt_topics.hh"
 #include "stepper_motor.hh"
 
-// enum DeviceState { OPEN, OPENING, CLOSED, CLOSING, STOPPED };
-
-// ----- Device Info -----
-#define HA_DEVICE_ID "window_1"
-
-#define HA_DEVICE_MANUFACTURER "Isaac Shiells Thomas"
-#define HA_DEVICE_MODEL "Prototype"
-#define HA_DEVICE_SOFTWARE_VERSION "3.0"
-#define HA_DEVICE_HARDWARE_VERSION "1.0"
-#define HA_DEVICE_SERIAL_NUMBER "1"
-
-// ----- MQTT Topics -----
-#define MQTT_TOPIC_BASE "hass/" HA_DEVICE_ID "/"
-#define MQTT_TOPIC_AVAILABILITY MQTT_TOPIC_BASE "avail"
-#define MQTT_TOPIC_STATE_GENERAL MQTT_TOPIC_BASE "state/gnrl"
-#define MQTT_TOPIC_STATE_SPEED MQTT_TOPIC_BASE "state/speed"
-#define MQTT_TOPIC_STATE_QUIET MQTT_TOPIC_BASE "state/quiet"
-#define MQTT_TOPIC_STATE_POSITION_STEPS MQTT_TOPIC_BASE "state/steps"
-#define MQTT_TOPIC_STATE_POSITION_MM MQTT_TOPIC_BASE "state/mm"
-#define MQTT_TOPIC_STATE_POSITION_PERCENT MQTT_TOPIC_BASE "state/percent"
-#define MQTT_TOPIC_COMMAND_GENERAL MQTT_TOPIC_BASE "cmd/gnrl"
-#define MQTT_TOPIC_COMMAND_SPEED MQTT_TOPIC_BASE "cmd/speed"
-#define MQTT_TOPIC_COMMAND_QUIET MQTT_TOPIC_BASE "cmd/quiet"
-#define MQTT_TOPIC_COMMAND_POSITION_STEPS MQTT_TOPIC_BASE "cmd/steps"
-#define MQTT_TOPIC_COMMAND_POSITION_MM MQTT_TOPIC_BASE "cmd/mm"
-#define MQTT_TOPIC_COMMAND_POSITION_PERCENT MQTT_TOPIC_BASE "cmd/percent"
-#define MQTT_TOPIC_SENSOR_MICRO_STEPS MQTT_TOPIC_BASE "snsr/micrstp"
-#define MQTT_TOPIC_SENSOR_HALF_STEP_DELAY MQTT_TOPIC_BASE "snsr/stepdelay"
-
-// ----- Device Discovery -----
-#define HA_DEVICE_MQTT_DISCOVERY_TOPIC "hass/device/" HA_DEVICE_ID "/config"
 // #define HA_DEVICE_MQTT_DISCOVERY_TOPIC_MAIN_WINDOW \
 //   "homeassistant/cover/" HA_DEVICE_ID "/config"
 // dev  |-> device
@@ -213,7 +183,7 @@
   "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
   "\""                                                            \
   "},"                                                            \
-  "\"p\":\"sensor\","                                             \ 
+  "\"p\":\"sensor\","                                             \
   "\"device_class\":null,"                                        \
   "\"state_topic\":\"" MQTT_TOPIC_SENSOR_MICRO_STEPS              \
   "\","                                                           \
@@ -233,7 +203,7 @@
   "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
   "\""                                                            \
   "},"                                                            \
-  "\"p\":\"sensor\","                                             \ 
+  "\"p\":\"sensor\","                                             \
   "\"device_class\":\"duration\","                                \
   "\"unit_of_measurement\":\"µs\","                               \
   "\"state_topic\":\"" MQTT_TOPIC_SENSOR_HALF_STEP_DELAY          \
@@ -304,12 +274,12 @@ bool mqttDoConnect(mqtt_client_t* client);
 void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm);
 // void haDeviceSetup(mqtt_client_t* client, StepperMotor* stepper_motor);
 
-void publishStepperMotorSpeed();
-void publishStepperMotorQuietMode();
-void publishStepperMotorState();
-void publishStepperMotorPositionPercentage();
-void publishStepperMotorPositionSteps();
-void publishStepperMotorPositionMM();
-void publishAll();
+// void publishStepperMotorSpeed();
+// void publishStepperMotorQuietMode();
+// void publishStepperMotorState();
+// void publishStepperMotorPositionPercentage();
+// void publishStepperMotorPositionSteps();
+// void publishStepperMotorPositionMM();
+// void publishAll();
 
 #endif
