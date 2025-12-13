@@ -1,6 +1,9 @@
 #ifndef PINS_H
 #define PINS_H
 
+#include <hardware/gpio.h>
+#include <stdbool.h>
+
 #define RED_LED_PIN 0
 #define GREEN_LED_PIN 3  // Removed
 #define YELLOW_LED_PIN 1
@@ -38,5 +41,6 @@
                         : 1)
 
 void init_pins();
+void init_pin(uint pin, bool dir, bool init_val);
 
 #endif
