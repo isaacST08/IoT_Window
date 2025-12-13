@@ -80,6 +80,9 @@ class StepperMotor {
                uint initial_micro_step, float initial_speed,
                mqtt_client_t* mqtt_client);
 
+  // --- Parameters ---
+  bool publish_updates;
+
   // --- Basic ---
   void enable();
   void disable();
@@ -143,7 +146,6 @@ class StepperMotor {
   void updateState();
 
   // --- MQTT ---
-  static void mqttPubRequestCb(void* arg, err_t result);
   bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
                         u8_t retain);
 
@@ -157,7 +159,7 @@ class StepperMotor {
 
  private:
   Action queued_action;
-  char* queued_action_arg;
+  char queued_action_arg[SM_ARG_BUFFER_SIZE];
   State state;
   struct StepperMotorPins pins;
   // struct StepperMotorLimitSwitches limit_switches;
@@ -168,6 +170,8 @@ class StepperMotor {
   float speed;
   mqtt_client_t* mqtt_client;
 };
+
+static void mqttPubRequestCb(void* arg, err_t result);
 
 }  // namespace stepper_motor
 

@@ -2,6 +2,7 @@
 #define PINS_H
 
 #include <hardware/gpio.h>
+#include <pico/types.h>
 #include <stdbool.h>
 
 #define RED_LED_PIN 0
@@ -41,6 +42,6 @@
                         : 1)
 
 void init_pins();
-void init_pin(uint pin, bool dir, bool init_val);
+// void init_pin(uint pin, bool dir, bool init_val);
 
 #endif

@@ -672,6 +672,7 @@ void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
   // }
 
   // Publish device states.
+  window_sm->publish_updates = true;
   window_sm->publishAll();
 
   // return setup_successful;

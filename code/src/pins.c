@@ -30,8 +30,8 @@ void init_pins() {
   gpio_set_pulls(LS_2, true, false);  // Pull up
 }
 
-void init_pin(uint pin, bool dir, bool init_val) {
-  gpio_init(pin);
-  gpio_set_dir(pin, dir);
-  if (dir == GPIO_OUT) gpio_put(pin, init_val);
-}
+// void init_pin(uint pin, bool dir, bool init_val) {
+//   gpio_init(pin);
+//   gpio_set_dir(pin, dir);
+//   if (dir == GPIO_OUT) gpio_put(pin, init_val);
+// }

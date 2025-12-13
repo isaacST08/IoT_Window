@@ -4,6 +4,7 @@
 #include <math.h>
 #include <pico/platform/compiler.h>
 #include <pico/time.h>
+#include <pico/types.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -27,6 +28,11 @@ using namespace stepper_motor;
 
 #define MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(mm_per_sec, micro_step) \
   ceil(1000000.0 / (mm_per_sec * SM_FULL_STEPS_PER_MM * micro_step * 2))
+
+#define INIT_PIN(pin, dir, val) \
+  gpio_init(pin);               \
+  gpio_set_dir(pin, dir);       \
+  if (dir == GPIO_OUT) gpio_put(pin, val)
 
 //
 //
@@ -60,23 +66,31 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
   this->pins.ms1 = micro_step_1_pin;
   this->pins.ms2 = micro_step_2_pin;
 
+  printf("Hi1\n");
+
   // ----- Initialize the pins -----
   // Enable Pin.
-  init_pin(this->pins.enable, GPIO_OUT, 0);
+  INIT_PIN(this->pins.enable, GPIO_OUT, 0);
 
   // Motor Direction Pin.
-  init_pin(this->pins.direction, GPIO_OUT, 0);
+  INIT_PIN(this->pins.direction, GPIO_OUT, 0);
 
   // Motor Pulse Pin.
-  init_pin(this->pins.pulse, GPIO_OUT, 0);
+  INIT_PIN(this->pins.pulse, GPIO_OUT, 0);
 
   // Stepper Motor Micro-Step Pin A.
-  init_pin(this->pins.ms1, GPIO_OUT, 0);
+  INIT_PIN(this->pins.ms1, GPIO_OUT, 0);
 
   // Stepper Motor Micro-Step Pin B.
-  init_pin(this->pins.ms2, GPIO_OUT, 0);
+  INIT_PIN(this->pins.ms2, GPIO_OUT, 0);
+
+  printf("Hi2\n");
 
   // ----- Set Initial Values -----
+
+  // Don't publish updates until the MQTT client is fully setup.
+  this->publish_updates = false;
+
   // Quiet mode off by default.
   this->quiet_mode = false;
 
@@ -89,14 +103,22 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
   // No queued actions yet.
   this->queued_action = Action::NONE;
 
+  printf("Hi3\n");
+
   // Create a buffer for the arg.
-  this->queued_action_arg = (char*)malloc(SM_ARG_BUFFER_SIZE * sizeof(char));
+  memset(&this->queued_action_arg, 0, SM_ARG_BUFFER_SIZE);
+
+  printf("Hi4\n");
 
   // Not moving.
   this->state = State::STOPPED;
 
+  printf("Hi5\n");
+
   // Set the initial micro steps value of the motor.
   this->setMicroStep(initial_micro_step);
+
+  printf("Hi5\n");
 
   // Default motor speed.
   this->setSpeed(initial_speed);
@@ -507,7 +529,10 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
  *
  * It is up to the other functions to respect this flag.
  */
-void StepperMotor::stop() { this->stop_motor = true; }
+void StepperMotor::stop() {
+  this->stop_motor = true;
+  this->queued_action = Action::NONE;
+}
 
 /**
  * Homes the stepper motor to find the zero position.
@@ -654,6 +679,9 @@ void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
     step_delta = current_step_position - step;
   }
 
+  // Fulfill the action.
+  this->queued_action = Action::NONE;
+
   // Move the steps to move to the desired position.
   this->moveSteps(step_delta, dir, soft_start);
 };
@@ -777,7 +805,7 @@ void StepperMotor::updateState() {
 // **===========================================**
 
 /* Called when publish is complete either with success or failure */
-static void mqttPubRequestCb(void* arg, err_t result) {
+static void stepper_motor::mqttPubRequestCb(void* arg, err_t result) {
   if (result != ERR_OK) {
     printf("Publish result: %d\n", result);
     gpio_put(BLUE_LED_PIN, 1);
@@ -793,14 +821,16 @@ static void mqttPubRequestCb(void* arg, err_t result) {
 
 bool StepperMotor::basicMqttPublish(const char* topic, const char* payload,
                                     u8_t qos, u8_t retain) {
-  err_t err;
-  cyw43_arch_lwip_begin();
-  err = mqtt_publish(this->mqtt_client, topic, payload, strlen(payload), qos,
-                     retain, mqttPubRequestCb, NULL);
-  cyw43_arch_lwip_end();
-  if (err != ERR_OK) {
-    printf("Publish err: %d\n", err);
-    return false;
+  if (this->publish_updates) {
+    err_t err;
+    cyw43_arch_lwip_begin();
+    err = mqtt_publish(this->mqtt_client, topic, payload, strlen(payload), qos,
+                       retain, mqttPubRequestCb, NULL);
+    cyw43_arch_lwip_end();
+    if (err != ERR_OK) {
+      printf("Publish err: %d\n", err);
+      return false;
+    }
   }
 
   return true;

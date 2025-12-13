@@ -126,6 +126,7 @@ int main() {
   stepper_motor::StepperMotor window_sm(SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN,
                                         SM_MS1_PIN, SM_MS2_PIN, MS_64, 1,
                                         mqtt_client);
+  printf("Motor setup complete.\n");
 
   // Setup the Home Assistant device.
   haDeviceSetup(mqtt_client, &window_sm);
