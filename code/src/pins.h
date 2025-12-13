@@ -23,6 +23,20 @@
 #define MS_32 0b01
 #define MS_64 0b10
 
+#define MS_ENCODE(ms_int)   \
+  ((ms_int == 8)    ? MS_8  \
+   : (ms_int == 16) ? MS_16 \
+   : (ms_int == 32) ? MS_32 \
+   : (ms_int == 64) ? MS_64 \
+                    : MS_64)
+
+#define MS_DECODE(ms_pins)   \
+  ((ms_pins == MS_8)    ? 8  \
+   : (ms_pins == MS_16) ? 16 \
+   : (ms_pins == MS_32) ? 32 \
+   : (ms_pins == MS_64) ? 64 \
+                        : 1)
+
 void init_pins();
 
 #endif
