@@ -10,6 +10,8 @@
 #include <string.h>
 
 #include "advanced_opts.h"
+#include "ha_device_info.hh"
+#include "mqtt_topics.hh"
 #include "opts.h"
 #include "pico/cyw43_arch.h"
 #include "secrets.h"
@@ -119,124 +121,125 @@ void pubDiscoveryMsgErrLedCode() {
 // ||          <<<<< BASIC FUNCTIONS >>>>>          ||
 // **===============================================**
 
-static void mqttPubRequestCb(void* arg, err_t result);
-
-bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
-                      u8_t retain) {
-  // const char* pub_payload = payload;
-
-  err_t err;
-  cyw43_arch_lwip_begin();
-  err = mqtt_publish(mqtt_client, topic, payload, strlen(payload), qos, retain,
-                     mqttPubRequestCb, NULL);
-  cyw43_arch_lwip_end();
-  if (err != ERR_OK) {
-    // setup_successful = false;
-    printf("Publish err: %d\n", err);
-    // pubDiscoveryMsgErrLedCode();
-    return false;
-  }
-
-  return true;
-}
+// static void mqttPubRequestCb(void* arg, err_t result);
+//
+// bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
+//                       u8_t retain) {
+//   // const char* pub_payload = payload;
+//
+//   err_t err;
+//   cyw43_arch_lwip_begin();
+//   err = mqtt_publish(mqtt_client, topic, payload, strlen(payload), qos,
+//   retain,
+//                      mqttPubRequestCb, NULL);
+//   cyw43_arch_lwip_end();
+//   if (err != ERR_OK) {
+//     // setup_successful = false;
+//     printf("Publish err: %d\n", err);
+//     // pubDiscoveryMsgErrLedCode();
+//     return false;
+//   }
+//
+//   return true;
+// }
 
 // **===========================================================**
 // ||          <<<<< HA DEVICE PUBLISH FUNCTIONS >>>>>          ||
 // **===========================================================**
 
-void publishStepperMotorSpeed() {
-  char buf[16];
-  sprintf(buf, "%.2f", window_sm->getSpeed());
-  basicMqttPublish(MQTT_TOPIC_STATE_SPEED, buf, 1, 0);
-}
-
-void publishStepperMotorQuietMode() {
-  basicMqttPublish(MQTT_TOPIC_STATE_QUIET,
-                   (window_sm->getQuietMode()) ? "ON" : "OFF", 1, 0);
-}
-
-void publishStepperMotorPositionPercentage() {
-  char buf[64];
-#if INVERT_DISPLAY_DIRECTION
-  sprintf(buf, "%d", -1 * window_sm->getPositionPercentage());
-#else
-  sprintf(buf, "%d", smGetPositionPercentage(window_stepper_motor));
-#endif
-  basicMqttPublish(MQTT_TOPIC_STATE_POSITION_PERCENT, buf, 1, 0);
-}
-
-void publishStepperMotorPositionSteps() {
-  char buf[64];
-#if INVERT_DISPLAY_DIRECTION
-  sprintf(buf, "%lld", -1 * window_sm->getPosition());
-#else
-  sprintf(buf, "%lld", window_sm->getPosition());
-#endif
-  basicMqttPublish(MQTT_TOPIC_STATE_POSITION_STEPS, buf, 1, 0);
-}
-
-void publishStepperMotorPositionMM() {
-  char buf[64];
-  sprintf(buf, "%0.1f",
-          (double)window_sm->getPosition() /
-              (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-#if INVERT_DISPLAY_DIRECTION
-  sprintf(buf, "%0.1f",
-          -1 * ((double)window_sm->getPosition() /
-                (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
-#else
-  sprintf(buf, "%0.1f",
-          (double)window_sm->getPosition() /
-              (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-#endif
-  basicMqttPublish(MQTT_TOPIC_STATE_POSITION_MM, buf, 1, 0);
-}
-
-void publishStepperMotorState() {
-  char* payload;
-  // switch (window_stepper_motor->state) {
-  switch (window_sm->getState()) {
-    case stepper_motor::State::OPEN:
-      payload = (char*)"open";
-      break;
-    case stepper_motor::State::OPENING:
-      payload = (char*)"opening";
-      break;
-    case stepper_motor::State::CLOSED:
-      payload = (char*)"closed";
-      break;
-    case stepper_motor::State::CLOSING:
-      payload = (char*)"closing";
-      break;
-    case stepper_motor::State::STOPPED:
-      payload = (char*)"stopped";
-      break;
-  }
-  basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, payload, 1, 0);
-}
-
-void publishStepperMotorMicroSteps() {
-  char buf[4];
-  sprintf(buf, "%d", window_sm->getMicroStepInt());
-  basicMqttPublish(MQTT_TOPIC_SENSOR_MICRO_STEPS, buf, 1, 0);
-}
-
-void publishStepperMotorHalfStepDelay() {
-  char buf[16];
-  sprintf(buf, "%llu", window_sm->getHalfStepDelay());
-  basicMqttPublish(MQTT_TOPIC_SENSOR_HALF_STEP_DELAY, buf, 1, 0);
-}
-
-void publishAll() {
-  publishStepperMotorSpeed();
-  publishStepperMotorQuietMode();
-  publishStepperMotorState();
-  publishStepperMotorPositionPercentage();
-  publishStepperMotorPositionSteps();
-  publishStepperMotorPositionMM();
-  publishStepperMotorMicroSteps();
-  publishStepperMotorHalfStepDelay();
-}
+// void publishStepperMotorSpeed() {
+//   char buf[16];
+//   sprintf(buf, "%.2f", window_sm->getSpeed());
+//   basicMqttPublish(MQTT_TOPIC_STATE_SPEED, buf, 1, 0);
+// }
+//
+// void publishStepperMotorQuietMode() {
+//   basicMqttPublish(MQTT_TOPIC_STATE_QUIET,
+//                    (window_sm->getQuietMode()) ? "ON" : "OFF", 1, 0);
+// }
+//
+// void publishStepperMotorPositionPercentage() {
+//   char buf[64];
+// #if INVERT_DISPLAY_DIRECTION
+//   sprintf(buf, "%d", -1 * window_sm->getPositionPercentage());
+// #else
+//   sprintf(buf, "%d", smGetPositionPercentage(window_stepper_motor));
+// #endif
+//   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_PERCENT, buf, 1, 0);
+// }
+//
+// void publishStepperMotorPositionSteps() {
+//   char buf[64];
+// #if INVERT_DISPLAY_DIRECTION
+//   sprintf(buf, "%lld", -1 * window_sm->getPosition());
+// #else
+//   sprintf(buf, "%lld", window_sm->getPosition());
+// #endif
+//   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_STEPS, buf, 1, 0);
+// }
+//
+// void publishStepperMotorPositionMM() {
+//   char buf[64];
+//   sprintf(buf, "%0.1f",
+//           (double)window_sm->getPosition() /
+//               (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+// #if INVERT_DISPLAY_DIRECTION
+//   sprintf(buf, "%0.1f",
+//           -1 * ((double)window_sm->getPosition() /
+//                 (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
+// #else
+//   sprintf(buf, "%0.1f",
+//           (double)window_sm->getPosition() /
+//               (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+// #endif
+//   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_MM, buf, 1, 0);
+// }
+//
+// void publishStepperMotorState() {
+//   char* payload;
+//   // switch (window_stepper_motor->state) {
+//   switch (window_sm->getState()) {
+//     case stepper_motor::State::OPEN:
+//       payload = (char*)"open";
+//       break;
+//     case stepper_motor::State::OPENING:
+//       payload = (char*)"opening";
+//       break;
+//     case stepper_motor::State::CLOSED:
+//       payload = (char*)"closed";
+//       break;
+//     case stepper_motor::State::CLOSING:
+//       payload = (char*)"closing";
+//       break;
+//     case stepper_motor::State::STOPPED:
+//       payload = (char*)"stopped";
+//       break;
+//   }
+//   basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, payload, 1, 0);
+// }
+//
+// void publishStepperMotorMicroSteps() {
+//   char buf[4];
+//   sprintf(buf, "%d", window_sm->getMicroStepInt());
+//   basicMqttPublish(MQTT_TOPIC_SENSOR_MICRO_STEPS, buf, 1, 0);
+// }
+//
+// void publishStepperMotorHalfStepDelay() {
+//   char buf[16];
+//   sprintf(buf, "%llu", window_sm->getHalfStepDelay());
+//   basicMqttPublish(MQTT_TOPIC_SENSOR_HALF_STEP_DELAY, buf, 1, 0);
+// }
+//
+// void publishAll() {
+//   publishStepperMotorSpeed();
+//   publishStepperMotorQuietMode();
+//   publishStepperMotorState();
+//   publishStepperMotorPositionPercentage();
+//   publishStepperMotorPositionSteps();
+//   publishStepperMotorPositionMM();
+//   publishStepperMotorMicroSteps();
+//   publishStepperMotorHalfStepDelay();
+// }
 
 // **===============================================**
 // ||          <<<<< MQTT CALL-BACKS >>>>>          ||
@@ -306,7 +309,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
 
           window_sm->queueAction(stepper_motor::Action::OPEN);
           window_sm->setState(stepper_motor::State::OPENING);
-          publishAll();
+          // publishAll();
           // updateState(OPENING);
           // *queued_motor_move = OPEN;
           printf("Opening...\n");
@@ -318,7 +321,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
 
           window_sm->queueAction(stepper_motor::Action::CLOSE);
           window_sm->setState(stepper_motor::State::CLOSING);
-          publishAll();
+          // publishAll();
 
           // updateState(CLOSING);
           // *queued_motor_move = CLOSED;
@@ -332,7 +335,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
           // sm_stop();
           // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "stopped", 1, 0);
           // updateState(STOPPED);
-          publishAll();
+          // publishAll();
         } else {
           printf("Unknown general command\n");
         }
@@ -346,6 +349,11 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
         // }
         printf("Do position percentage command stuff\n");
+
+        window_sm->queueAction(stepper_motor::Action::MOVE_TO_PERCENT,
+                               (char*)data, (int)len);
+
+        // publishAll();
 
         //   int new_position_percent = atoi((char*)data);
         //   while (new_position_percent > 100)
@@ -425,10 +433,12 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
       }
       case POSITION_STEPS: {
         /* Don't trust the publisher, check zero termination */
-        if (data[len - 1] == 0) {
-          printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
-        }
+        // if (data[len - 1] == 0) {
+        //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
+        // }
         printf("Do position steps command stuff\n");
+        window_sm->queueAction(stepper_motor::Action::MOVE_TO_STEP, (char*)data,
+                               (int)len);
         break;
       }
       case POSITION_MM: {
@@ -450,9 +460,9 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         else if (len >= 3 && memcmp((char*)data, "OFF", 3) == 0)
           window_sm->setQuietMode(false);
 
-        publishStepperMotorQuietMode();
-        publishStepperMotorSpeed();
-        publishStepperMotorMicroSteps();
+        // publishStepperMotorQuietMode();
+        // publishStepperMotorSpeed();
+        // publishStepperMotorMicroSteps();
 
         break;
       }
@@ -461,8 +471,8 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         if (new_speed < 0.01) new_speed = 0.01;
         printf("Setting motor speed to %f\n", new_speed);
         window_sm->setSpeed(new_speed);
-        publishStepperMotorSpeed();
-        publishStepperMotorMicroSteps();
+        // publishStepperMotorSpeed();
+        // publishStepperMotorMicroSteps();
         break;
       }
       case OTHER: {
@@ -662,9 +672,7 @@ void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
   // }
 
   // Publish device states.
-  cyw43_arch_lwip_begin();
-  publishAll();
-  cyw43_arch_lwip_end();
+  window_sm->publishAll();
 
   // return setup_successful;
 }

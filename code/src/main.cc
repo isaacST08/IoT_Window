@@ -8,9 +8,12 @@
 #include <pico/stdio.h>
 #include <pico/time.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include <cstdio>
+#include <cstdlib>
 
 #include "ha_device.hh"
 #include "lwip/apps/mqtt.h"
@@ -100,7 +103,7 @@ int main() {
 
   // Get lwIP locks while creating the MQTT client.
   cyw43_arch_lwip_begin();
-  mqtt_client_t *mqtt_client = mqtt_client_new();
+  mqtt_client_t* mqtt_client = mqtt_client_new();
   cyw43_arch_lwip_end();
 
   // Attempt connection to the MQTT server and repeat until successful.
@@ -121,7 +124,8 @@ int main() {
 
   // Initialize stepper motor for the window.
   stepper_motor::StepperMotor window_sm(SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN,
-                                        SM_MS1_PIN, SM_MS2_PIN, MS_64, 1);
+                                        SM_MS1_PIN, SM_MS2_PIN, MS_64, 1,
+                                        mqtt_client);
 
   // Setup the Home Assistant device.
   haDeviceSetup(mqtt_client, &window_sm);
@@ -154,9 +158,6 @@ int main() {
   // Turn on the board led while the stepper motor is homing.
   cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
 
-  // Acquire network lock to prevent unwanted interrupts.
-  cyw43_arch_lwip_begin();
-
   // Enable the motor (turn it on).
   window_sm.enable();
 
@@ -164,9 +165,6 @@ int main() {
   printf("Homeing...\n");
   window_sm.home();
   printf("Homeing Complete.\n");
-
-  // Release the network lock now that homing is complete.
-  cyw43_arch_lwip_end();
 
   // *==*==*==*==*==*=========================================*==*==*==*==*==*
   // |  |  |  |  |  |          <<<<< MAIN LOOP >>>>>          |  |  |  |  |  |
@@ -227,13 +225,37 @@ int main() {
           break;
         }
 
+        case stepper_motor::Action::MOVE_TO_PERCENT: {
+          char* arg = window_sm.getQueuedActionArg();
+
+          // Parse the percentage value.
+          int percentage = CLAMP(atoi(arg), 0, 100);
+
+          // Move to the requested position.
+          window_sm.moveToPositionPercentage((float)percentage, true);
+
+          break;
+        }
+
+        case stepper_motor::Action::MOVE_TO_STEP: {
+          char* arg = window_sm.getQueuedActionArg();
+
+          // Parse the percentage value.
+          uint64_t step = CLAMP(strtol(arg, NULL, 10), 0, 100);
+
+          // Move to the requested position.
+          window_sm.moveToPosition(step, true);
+
+          break;
+        }
+
         // Do nothing.
         case stepper_motor::Action::NONE:
           break;
       }
 
       // After the operation is completed, publish the new state of the device.
-      publishAll();
+      // publishAll();
     }
 
     // Blink the board led through each main loop cycle.

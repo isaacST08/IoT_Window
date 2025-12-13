@@ -7,11 +7,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+
+#include <cstdlib>
+#include <cstring>
 
 #include "advanced_opts.h"
 #include "common.h"
 #include "limit_switch.h"
+#include "mqtt_topics.hh"
 #include "opts.h"
+#include "pico/cyw43_arch.h"
 
 extern "C" {
 #include "pins.h"
@@ -45,7 +51,8 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
                                           uint pulse_pin, uint micro_step_1_pin,
                                           uint micro_step_2_pin,
                                           uint initial_micro_step,
-                                          float initial_speed) {
+                                          float initial_speed,
+                                          mqtt_client_t* mqtt_client) {
   // Set stepper motor pins.
   this->pins.enable = enable_pin;
   this->pins.direction = direction_pin;
@@ -82,6 +89,9 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
   // No queued actions yet.
   this->queued_action = Action::NONE;
 
+  // Create a buffer for the arg.
+  this->queued_action_arg = (char*)malloc(SM_ARG_BUFFER_SIZE * sizeof(char));
+
   // Not moving.
   this->state = State::STOPPED;
 
@@ -90,6 +100,9 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
 
   // Default motor speed.
   this->setSpeed(initial_speed);
+
+  // Set the MQTT client.
+  this->mqtt_client = mqtt_client;
 }
 
 //
@@ -159,6 +172,9 @@ void StepperMotor::setQuietMode(bool mode) {
 
   // Update the motor speed.
   this->setSpeed(this->speed);
+
+  // Relay the change in quiet mode to the MQTT server.
+  this->publishQuietMode();
 }
 
 //
@@ -233,6 +249,9 @@ void StepperMotor::setMicroStep(uint micro_step) {
   // Set the micro step pins for the new micro step value.
   gpio_put(this->pins.ms1, desired_ms & 0b1);
   gpio_put(this->pins.ms2, (desired_ms >> 1) & 0b1);
+
+  // Send the update to the MQTT server.
+  this->publishMicroSteps();
 }
 
 //
@@ -327,6 +346,10 @@ void StepperMotor::setSpeed(float speed) {
     this->setMicroStep(chosen_micro_step);
     this->half_step_delay = chosen_half_step_delay;
   }
+
+  // Send the update to the MQTT server.
+  this->publishSpeed();
+  this->publishHalfStepDelay();
 }
 
 /**
@@ -451,6 +474,9 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
   // Determine which limit switch will be the edge of this direction.
   int limit_switch = (dir == LEFT_DIR) ? LS_LEFT : LS_RIGHT;
 
+  // Determine if the window is opening or closing.
+  this->state = (dir == CLOSE_DIR) ? State::CLOSING : State::OPENING;
+
   // Change the motor direction.
   this->setDir(dir);
 
@@ -462,6 +488,12 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
     this->step();
     steps_remaining--;
   }
+
+  // Update the state of the window.
+  this->updateState();
+
+  // Send the update to the MQTT server.
+  this->publishPosition();
 };
 
 //
@@ -481,6 +513,9 @@ void StepperMotor::stop() { this->stop_motor = true; }
  * Homes the stepper motor to find the zero position.
  */
 void StepperMotor::home() {
+  // Acquire the network lock so we don't get interrupted.
+  cyw43_arch_lwip_begin();
+
   // Save current the state of the motor.
   bool saved_dir = this->getDir();
   uint saved_ms = this->getMicroStep();
@@ -517,6 +552,13 @@ void StepperMotor::home() {
   this->setDir(saved_dir);
   this->setMicroStep(saved_ms);
   this->setSpeed(saved_speed);
+
+  // Send the updates to the MQTT server.
+  this->publishState();
+  this->publishPosition();
+
+  // Release the network lock.
+  cyw43_arch_lwip_end();
 }
 
 /**
@@ -533,18 +575,19 @@ bool StepperMotor::open() {
   this->stop_motor = false;
 
   // Set the current state.
-  this->state = State::OPENING;
+  this->setState(State::OPENING);
 
   // Move the motor in the open direction until either:
   // - The motor is told to stop, or
   // - The end stop is found, or
   // - The encoded window position in steps reaches the expected open position.
+  this->softStart(NULL, SM_SOFT_START_HALF_DELAY);
   while (!this->stop_motor && !LS_TRIGGERED(LS_OPEN) &&
          this->step_position != WINDOW_OPEN_STEP_POSITION)
     this->step();
 
   // Update the motor state.
-  this->state = (this->stop_motor) ? State::STOPPED : State::OPEN;
+  this->updateState();
   this->queued_action = Action::NONE;
   if (LS_TRIGGERED(LS_OPEN)) this->step_position = WINDOW_OPEN_STEP_POSITION;
 
@@ -567,19 +610,20 @@ bool StepperMotor::close() {
   this->stop_motor = false;
 
   // Set the current state.
-  this->state = State::CLOSING;
+  this->setState(State::CLOSING);
 
   // Move the motor in the close direction until either:
   // - The motor is told to stop, or
   // - The end stop is found, or
   // - The encoded window position in steps reaches the expected closed
   //   position.
+  this->softStart(NULL, SM_SOFT_START_HALF_DELAY);
   while (!this->stop_motor && !LS_TRIGGERED(LS_CLOSED) &&
          this->step_position != WINDOW_CLOSED_STEP_POSITION)
     this->step();
 
   // Update the motor state.
-  this->state = (this->stop_motor) ? State::STOPPED : State::CLOSED;
+  this->updateState();
   this->queued_action = Action::NONE;
   if (LS_TRIGGERED(LS_CLOSED))
     this->step_position = WINDOW_CLOSED_STEP_POSITION;
@@ -673,12 +717,28 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
  */
 Action StepperMotor::getQueuedAction() { return this->queued_action; }
 
+char* StepperMotor::getQueuedActionArg() { return this->queued_action_arg; }
+
 /**
  * Adds the desired action as the next action to perform for this motor.
  *
  * This is a queue of length 1.
  */
-void StepperMotor::queueAction(Action action) { this->queued_action = action; }
+void StepperMotor::queueAction(Action action, char* arg, int arg_size) {
+  this->queued_action = action;
+  if (arg != NULL) {
+    memcpy(this->queued_action_arg, arg, MIN(SM_ARG_BUFFER_SIZE, arg_size));
+  }
+}
+
+/**
+ * Adds the desired action as the next action to perform for this motor.
+ *
+ * This is a queue of length 1.
+ */
+void StepperMotor::queueAction(Action action) {
+  this->queueAction(action, NULL, 0);
+}
 
 //
 //
@@ -694,4 +754,163 @@ State StepperMotor::getState() { return this->state; }
 /**
  * Sets the current working state of the motor.
  */
-void StepperMotor::setState(State state) { this->state = state; }
+void StepperMotor::setState(State state) {
+  this->state = state;
+  this->publishState();
+}
+
+void StepperMotor::updateState() {
+  // Update the state of the window
+  if (LS_TRIGGERED(LS_CLOSED)) {
+    this->setState(State::CLOSED);
+  } else if (LS_TRIGGERED(LS_OPEN)) {
+    this->setState(State::OPEN);
+  } else {
+    this->setState(State::STOPPED);
+  }
+}
+
+//
+//
+// **===========================================**
+// ||          <<<<< MQTT BASICS >>>>>          ||
+// **===========================================**
+
+/* Called when publish is complete either with success or failure */
+static void mqttPubRequestCb(void* arg, err_t result) {
+  if (result != ERR_OK) {
+    printf("Publish result: %d\n", result);
+    gpio_put(BLUE_LED_PIN, 1);
+    for (int i = 0; i < 3; i++) {
+      gpio_put(RED_LED_PIN, 1);
+      sleep_ms(150);
+      gpio_put(RED_LED_PIN, 0);
+      sleep_ms(100);
+    }
+    gpio_put(BLUE_LED_PIN, 0);
+  }
+}
+
+bool StepperMotor::basicMqttPublish(const char* topic, const char* payload,
+                                    u8_t qos, u8_t retain) {
+  err_t err;
+  cyw43_arch_lwip_begin();
+  err = mqtt_publish(this->mqtt_client, topic, payload, strlen(payload), qos,
+                     retain, mqttPubRequestCb, NULL);
+  cyw43_arch_lwip_end();
+  if (err != ERR_OK) {
+    printf("Publish err: %d\n", err);
+    return false;
+  }
+
+  return true;
+}
+
+//
+//
+// **======================================================**
+// ||          <<<<< MQTT PUBLISH FUNCTIONS >>>>>          ||
+// **======================================================**
+
+void StepperMotor::publishSpeed() {
+  if (this->mqtt_client != NULL) {
+    char buf[16];
+    sprintf(buf, "%.2f", this->getSpeed());
+    basicMqttPublish(MQTT_TOPIC_STATE_SPEED, buf, 1, 0);
+  }
+}
+
+void StepperMotor::publishQuietMode() {
+  if (this->mqtt_client != NULL) {
+    basicMqttPublish(MQTT_TOPIC_STATE_QUIET,
+                     (this->getQuietMode()) ? "ON" : "OFF", 1, 0);
+  }
+}
+
+void StepperMotor::publishPosition() {
+  if (this->mqtt_client != NULL) {
+    char buf[64];
+    // ----- PERCENTAGE POSITION -----
+    {
+#if INVERT_DISPLAY_DIRECTION
+      sprintf(buf, "%d", -1 * this->getPositionPercentage());
+#else
+      sprintf(buf, "%d", this->getPositionPercentage());
+#endif
+      basicMqttPublish(MQTT_TOPIC_STATE_POSITION_PERCENT, buf, 1, 0);
+    }
+
+    // ----- STEPS POSITION -----
+    {
+#if INVERT_DISPLAY_DIRECTION
+      sprintf(buf, "%lld", -1 * this->getPosition());
+#else
+      sprintf(buf, "%lld", this->getPosition());
+#endif
+      basicMqttPublish(MQTT_TOPIC_STATE_POSITION_STEPS, buf, 1, 0);
+    }
+
+    // ----- MM POSITION -----
+    {
+#if INVERT_DISPLAY_DIRECTION
+      sprintf(buf, "%0.1f",
+              -1 * ((double)this->getPosition() /
+                    (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
+#else
+      sprintf(buf, "%0.1f",
+              ((double)this->getPosition() /
+                  (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+#endif
+      basicMqttPublish(MQTT_TOPIC_STATE_POSITION_MM, buf, 1, 0);
+    }
+  }
+}
+
+void StepperMotor::publishState() {
+  if (this->mqtt_client != NULL) {
+    char* payload;
+    switch (this->getState()) {
+      case stepper_motor::State::OPEN:
+        payload = (char*)"open";
+        break;
+      case stepper_motor::State::OPENING:
+        payload = (char*)"opening";
+        break;
+      case stepper_motor::State::CLOSED:
+        payload = (char*)"closed";
+        break;
+      case stepper_motor::State::CLOSING:
+        payload = (char*)"closing";
+        break;
+      case stepper_motor::State::STOPPED:
+        payload = (char*)"stopped";
+        break;
+    }
+    basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, payload, 1, 0);
+  }
+}
+
+void StepperMotor::publishMicroSteps() {
+  if (this->mqtt_client != NULL) {
+    char buf[4];
+    sprintf(buf, "%d", this->getMicroStepInt());
+    basicMqttPublish(MQTT_TOPIC_SENSOR_MICRO_STEPS, buf, 1, 0);
+  }
+}
+
+void StepperMotor::publishHalfStepDelay() {
+  if (this->mqtt_client != NULL) {
+    char buf[16];
+    sprintf(buf, "%llu", this->getHalfStepDelay());
+    basicMqttPublish(MQTT_TOPIC_SENSOR_HALF_STEP_DELAY, buf, 1, 0);
+  }
+}
+
+void StepperMotor::publishAll() {
+  this->publishSpeed();
+  this->publishQuietMode();
+  this->publishPosition();
+  this->publishState();
+  this->publishMicroSteps();
+  this->publishHalfStepDelay();
+}

@@ -1,6 +1,8 @@
 #ifndef STEPPER_MOTOR_HH
 #define STEPPER_MOTOR_HH
+
 #include <common.h>
+#include <lwip/apps/mqtt.h>
 #include <lwip/arch.h>
 #include <pico/types.h>
 #include <stdbool.h>
@@ -37,9 +39,11 @@ typedef u8_t micro_step_t;
 #define SM_SOFT_START_HALF_DELAY 1000
 #define SM_SOFT_START_INCREASE_FACTOR 50
 
+#define SM_ARG_BUFFER_SIZE 256
+
 namespace stepper_motor {
 
-enum class Action { NONE, OPEN, CLOSE };
+enum class Action { NONE, OPEN, CLOSE, MOVE_TO_PERCENT, MOVE_TO_STEP };
 
 enum class State { OPEN, OPENING, CLOSED, CLOSING, STOPPED };
 
@@ -73,7 +77,8 @@ class StepperMotor {
  public:
   StepperMotor(uint enable_pin, uint direction_pin, uint pulse_pin,
                uint micro_step_1_pin, uint micro_step_2_pin,
-               uint initial_micro_step, float initial_speed);
+               uint initial_micro_step, float initial_speed,
+               mqtt_client_t* mqtt_client);
 
   // --- Basic ---
   void enable();
@@ -128,14 +133,31 @@ class StepperMotor {
 
   // --- Action Queueing ---
   Action getQueuedAction();
+  char* getQueuedActionArg();
+  void queueAction(Action action, char* arg, int arg_size);
   void queueAction(Action action);
 
   // --- States ---
   State getState();
   void setState(State state);
+  void updateState();
+
+  // --- MQTT ---
+  static void mqttPubRequestCb(void* arg, err_t result);
+  bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
+                        u8_t retain);
+
+  void publishSpeed();
+  void publishQuietMode();
+  void publishPosition();
+  void publishState();
+  void publishMicroSteps();
+  void publishHalfStepDelay();
+  void publishAll();
 
  private:
   Action queued_action;
+  char* queued_action_arg;
   State state;
   struct StepperMotorPins pins;
   // struct StepperMotorLimitSwitches limit_switches;
@@ -144,6 +166,7 @@ class StepperMotor {
   int64_t step_position;
   uint64_t half_step_delay;
   float speed;
+  mqtt_client_t* mqtt_client;
 };
 
 }  // namespace stepper_motor
