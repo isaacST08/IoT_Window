@@ -1,11 +1,14 @@
 #ifndef STEPPER_MOTOR_HH
 #define STEPPER_MOTOR_HH
 #include <common.h>
+#include <lwip/arch.h>
 #include <pico/types.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "limit_switch.h"
+
+typedef u8_t micro_step_t;
 
 #define SM_MS8_MIN_HALF_DELAY 85
 #define SM_MS16_MIN_HALF_DELAY 42
@@ -16,6 +19,20 @@
 #define SM_MS16_MIN_HALF_DELAY_QUIET 301
 #define SM_MS32_MIN_HALF_DELAY_QUIET 161
 #define SM_MS64_MIN_HALF_DELAY_QUIET 75
+
+#define SM_MS_MIN_HALF_DELAY(ms)         \
+  ((ms == 64)   ? SM_MS64_MIN_HALF_DELAY \
+   : (ms == 32) ? SM_MS32_MIN_HALF_DELAY \
+   : (ms == 16) ? SM_MS16_MIN_HALF_DELAY \
+   : (ms == 8)  ? SM_MS8_MIN_HALF_DELAY  \
+                : SM_MS8_MIN_HALF_DELAY)
+
+#define SM_MS_MIN_HALF_DELAY_QUIET(ms)         \
+  ((ms == 64)   ? SM_MS64_MIN_HALF_DELAY_QUIET \
+   : (ms == 32) ? SM_MS32_MIN_HALF_DELAY_QUIET \
+   : (ms == 16) ? SM_MS16_MIN_HALF_DELAY_QUIET \
+   : (ms == 8)  ? SM_MS8_MIN_HALF_DELAY_QUIET  \
+                : SM_MS8_MIN_HALF_DELAY_QUIET)
 
 #define SM_SOFT_START_HALF_DELAY 1000
 #define SM_SOFT_START_INCREASE_FACTOR 50
@@ -58,26 +75,29 @@ class StepperMotor {
                uint micro_step_1_pin, uint micro_step_2_pin,
                uint initial_micro_step, float initial_speed);
 
-  uint getMicroStep();
-  uint getMicroStepInt();
-  void setMicroStep(uint micro_step);
-
   // --- Basic ---
   void enable();
   void disable();
 
   // --- Direction ---
-  void setDir(direction_t dir);
   direction_t getDir();
+  void setDir(direction_t dir);
   void swapDir();
 
-  // --- Speed ---
-  void setSpeed(float speed);
-  float getSpeed();
-
   // --- Quiet Mode ---
-  void setQuietMode(bool mode);
   bool getQuietMode();
+  void setQuietMode(bool mode);
+
+  // --- Micro Steps ---
+  uint getMicroStep();
+  uint getMicroStepInt();
+  void setMicroStep(uint micro_step);
+
+  // --- Speed ---
+  float getSpeed();
+  void setSpeed(float speed);
+
+  uint64_t getHalfStepDelay();
 
   // --- Position ---
   uint64_t getPosition();
@@ -87,26 +107,24 @@ class StepperMotor {
   float stepsToPercentage(uint64_t steps);
   uint64_t percentageToSteps(float percentage);
 
-  void moveToPosition(uint64_t step, bool soft_start);
-  void moveToPositionPercentage(float percent, bool soft_start);
-
   // --- Steps ---
   void stepExact(uint64_t half_step_delay);
   void step();
 
   void moveSteps(uint64_t steps, direction_t dir, bool soft_start);
 
+  // --- Movement ---
+  void stop();
+
+  void home();
+  bool open();
+  bool close();
+
+  void moveToPosition(uint64_t step, bool soft_start);
+  void moveToPositionPercentage(float percent, bool soft_start);
+
   void softStart(uint64_t* steps_remaining,
                  uint64_t initial_speed_half_step_delay);
-
-  uint64_t getHalfStepDelay();
-
-  // --- End Stops & Homing ---
-  void home();
-  bool close();
-  bool open();
-
-  void stop();
 
   // --- Action Queueing ---
   Action getQueuedAction();
@@ -129,58 +147,5 @@ class StepperMotor {
 };
 
 }  // namespace stepper_motor
-
-// void smInit(StepperMotor* sm, uint enable_pin, uint direction_pin,
-//             uint pulse_pin, uint micro_step_1_pin, uint micro_step_2_pin,
-//             // LimitSwitch* closed_limit_switch, LimitSwitch*
-//             open_limit_switch,
-//             // LimitSwitch* home_limit_switch,
-//             uint initial_micro_step, float initial_speed);
-//
-// uint smGetMicroStep(StepperMotor* sm);
-// uint smGetMicroStepInt(StepperMotor* sm);
-// void smSetMicroStep(StepperMotor* sm, uint micro_step);
-//
-// void smEnable(StepperMotor* sm);
-// void smDisable(StepperMotor* sm);
-//
-// void smSetDir(StepperMotor* sm, bool dir);
-// bool smGetDir(StepperMotor* sm);
-// void smSwapDir(StepperMotor* sm);
-//
-// void smSetSpeed(StepperMotor* sm, float speed);
-// float smGetSpeed(StepperMotor* sm);
-//
-// void smSetQuietMode(StepperMotor* sm, bool mode);
-//
-// uint64_t smGetPosition(StepperMotor* sm);
-// int smGetPositionPercentage(StepperMotor* sm);
-//
-// void smStepExact(StepperMotor* sm, uint64_t half_step_delay);
-// void smStep(StepperMotor* sm);
-//
-// void smHome(StepperMotor* sm);
-// bool smClose(StepperMotor* sm);
-// bool smOpen(StepperMotor* sm);
-//
-// void smStop(StepperMotor* sm);
-
-// // ----- OLD -----
-//
-// void sm_enable();
-// void sm_disable();
-//
-// void sm_set_speed_ptr(uint64_t* speed);
-//
-// void sm_step(uint64_t half_delay_us);
-//
-// void sm_set_dir(int dir);
-//
-// int get_micro_step();
-//
-// void sm_home();
-// bool sm_close();
-// bool sm_open();
-// void sm_stop();
 
 #endif
