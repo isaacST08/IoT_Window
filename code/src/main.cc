@@ -1,10 +1,3 @@
-#include <cyw43_country.h>
-#include <cyw43_ll.h>
-#include <hardware/gpio.h>
-#include <lwip/apps/mqtt_opts.h>
-#include <lwip/err.h>
-#include <lwip/ip4_addr.h>
-#include <lwip/ip_addr.h>
 #include <pico/stdio.h>
 #include <pico/time.h>
 #include <stdbool.h>
@@ -53,6 +46,7 @@ int main() {
 
   // Once stdio has been initialized, announce the start of the program.
   printf("Program Start\n");
+  stdio_flush();
 
   // Initialize the common pins (pins specific to a device get initialized with
   // that device).
@@ -86,8 +80,9 @@ int main() {
 
   // Initialize the network connection.
   printf("Initializing Networking... ");
-  if (network_init() != 0) {
+  if (networkInit() != 0) {
     printf("Failed! Exiting.\n");
+    stdio_flush();
     return -1;
   } else {
     printf("Success.\n");
@@ -177,7 +172,14 @@ int main() {
     if (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
         CYW43_LINK_JOIN) {
       gpio_put(RED_LED_PIN, 1);
-      // TODO: Implement "Try to reconnect" process.
+
+      // Leave the network.
+      wifiDisconnect();
+
+      // Reconnect to the network.
+      wifiConnect();
+
+      gpio_put(RED_LED_PIN, 0);
     }
 
     // ----- PROCESS STEPPER MOTOR ACTIONS -----
@@ -203,7 +205,7 @@ int main() {
      * being completed. One such command that is very useful is the STOP
      * command. Without this design, once a command is being executed it must
      * complete, but with it, the user can send an MQTT command to open the
-     * window, and then half way through (or in the even of an emergancy) call
+     * window, and then half way through (or in the even of an emergency) call
      * the command to stop the window. This allows for undecided movement
      * (non-percentage positioning) or for emergency stops (assuming networking
      * is still operational).

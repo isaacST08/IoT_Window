@@ -60,4 +60,21 @@
 #define WINDOW_OPEN_STEP_POSITION 0
 #endif
 
+// **===========================================**
+// ||          <<<<< NETWORKING >>>>>           ||
+// **===========================================**
+
+/*
+ * Wi-Fi will try to connect with a timeout. It will start with the minimum
+ * timeout and double each time the timeout is reached until the maximum timeout
+ * value is reached, at which point every following attempt will use the max
+ * timeout value.
+ *
+ * This allows for the first few timeouts to be fast and allows for a faster
+ * wifi connection, but still allows for longer connection timeouts if required.
+ */
+#define WIFI_CONNECTION_MIN_TIMOUT 1000
+#define WIFI_CONNECTION_MAX_TIMEOUT 30000
+#define WIFI_CONNECTION_MAX_ATTEMPTS -1  // Set to -1 for no max.
+
 #endif
