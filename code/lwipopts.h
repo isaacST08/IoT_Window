@@ -20,19 +20,19 @@
 #endif
 #define MEM_ALIGNMENT 4
 #ifndef MEM_SIZE
-#define MEM_SIZE 40000
+#define MEM_SIZE 56000
 #endif
 #define MEMP_NUM_TCP_SEG 32
 #define MEMP_NUM_ARP_QUEUE 10
 #define MEMP_NUM_SYS_TIMEOUT (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1)
 #define MQTT_REQ_MAX_IN_FLIGHT (10) /* Maximum of subscribe requests */
-#define MQTT_OUTPUT_RINGBUF_SIZE 8000
+#define MQTT_OUTPUT_RINGBUF_SIZE 10000
 #define PBUF_POOL_SIZE 24
 #define LWIP_ARP 1
 #define LWIP_ETHERNET 1
 #define LWIP_ICMP 1
 #define LWIP_RAW 1
-#define TCP_WND (8 * TCP_MSS)
+#define TCP_WND (12 * TCP_MSS)
 #define TCP_MSS 1460
 #define TCP_SND_BUF (8 * TCP_MSS)
 #define TCP_SND_QUEUELEN ((4 * (TCP_SND_BUF) + (TCP_MSS - 1)) / (TCP_MSS))
@@ -91,6 +91,6 @@
 #define PPP_DEBUG LWIP_DBG_OFF
 #define SLIP_DEBUG LWIP_DBG_OFF
 #define DHCP_DEBUG LWIP_DBG_OFF
-#define MQTT_DEBUG LWIP_DBG_ON
+#define MQTT_DEBUG LWIP_DBG_OFF
 
 #endif /* __LWIPOPTS_H__ */
