@@ -1,5 +1,6 @@
 #include "ha_device.hh"
 
+// #include <cyw43.h>
 #include <cyw43_configport.h>
 #include <hardware/gpio.h>
 #include <lwip/apps/mqtt.h>
@@ -18,14 +19,15 @@
 #include "stepper_motor.hh"
 
 extern "C" {
+#include "network.h"
 #include "pins.h"
 }
 
 #define MQTT_SUBSCRIBE(client, topic, err)                                \
   for (int i = 0; i < 3; i++) {                                           \
-    /* cyw43_arch_lwip_begin(); */                                        \
+    cyw43_arch_lwip_begin();                                              \
     err = mqtt_sub_unsub(client, topic, 1, mqttSubRequestCb, NULL, true); \
-    /* cyw43_arch_lwip_end(); */                                          \
+    cyw43_arch_lwip_end();                                                \
     if (err != ERR_OK) {                                                  \
       printf("Failed to subscribe to %s with error %d\n", topic, err);    \
       for (int i = 0; i < 2; i++) {                                       \
@@ -308,7 +310,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
           // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "opening", 1, 0);
 
           window_sm->queueAction(stepper_motor::Action::OPEN);
-          window_sm->setState(stepper_motor::State::OPENING);
+          // window_sm->setState(stepper_motor::State::OPENING);
           // publishAll();
           // updateState(OPENING);
           // *queued_motor_move = OPEN;
@@ -320,7 +322,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
           // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "closing", 1, 0);
 
           window_sm->queueAction(stepper_motor::Action::CLOSE);
-          window_sm->setState(stepper_motor::State::CLOSING);
+          // window_sm->setState(stepper_motor::State::CLOSING);
           // publishAll();
 
           // updateState(CLOSING);
@@ -567,6 +569,9 @@ bool mqttDoConnect(mqtt_client_t* client) {
     }
     printf("Wifi connection status: %d\n",
            cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA));
+    if (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) != CYW43_LINK_JOIN)
+      wifiConnect();
+
     connectionErrLedCode();
     sleep_ms(200);
   }
