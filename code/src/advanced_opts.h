@@ -32,6 +32,9 @@
 #define CLOSE_DIR (CLOSED_SIDE ^ INVERT_DIRECTION)
 #define OPEN_DIR (OPEN_SIDE ^ INVERT_DIRECTION)
 
+#define HOMING_SPEED_PRIMARY 5
+#define HOMING_SPEED_SECONDARY 1
+
 // **===============================================**
 // ||          <<<<< LIMIT SWITCHES >>>>>           ||
 // **===============================================**
@@ -41,9 +44,9 @@
 // #else
 // #define LS_HOME LS_LEFT
 // #endif
-#define LS_HOME (HOME_SIDE == RIGHT_SIDE) ? LS_RIGHT : LS_LEFT
-#define LS_CLOSED (CLOSED_SIDE == RIGHT_SIDE) ? LS_RIGHT : LS_LEFT
-#define LS_OPEN (OPEN_SIDE == RIGHT_SIDE) ? LS_RIGHT : LS_LEFT
+#define LS_HOME ((HOME_SIDE == RIGHT_SIDE) ? LS_RIGHT : LS_LEFT)
+#define LS_CLOSED ((CLOSED_SIDE == RIGHT_SIDE) ? LS_RIGHT : LS_LEFT)
+#define LS_OPEN ((OPEN_SIDE == RIGHT_SIDE) ? LS_RIGHT : LS_LEFT)
 
 // **=========================================**
 // ||          <<<<< POSITION >>>>>           ||
@@ -52,7 +55,9 @@
 #if (HOME_SIDE == CLOSED_SIDE)
 #define WINDOW_CLOSED_STEP_POSITION 0
 #define WINDOW_OPEN_STEP_POSITION \
-  (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS * (1 - OPEN_DIR * 2))
+  (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)
+// (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS * (1 - OPEN_DIR *
+// 2))
 #else
 #define WINDOW_CLOSED_STEP_POSITION                          \
   (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS * \
