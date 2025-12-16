@@ -32,9 +32,17 @@ extern "C" {
  * dispatching motor operations.
  */
 int main() {
-  // *==*==*==*==*==*=====================================*==*==*==*==*==*
-  // |  |  |  |  |  |          <<<<< SETUP >>>>>          |  |  |  |  |  |
-  // *==*==*==*==*==*=====================================*==*==*==*==*==*
+  /*
+  **=========================================================================**
+  ||                                                                         ||
+  ||                ███████ ███████ ████████ ██    ██ ██████                 ||
+  ||                ██      ██         ██    ██    ██ ██   ██                ||
+  ||                ███████ █████      ██    ██    ██ ██████                 ||
+  ||                     ██ ██         ██    ██    ██ ██                     ||
+  ||                ███████ ███████    ██     ██████  ██                     ||
+  ||                                                                         ||
+  **=========================================================================**
+  */
 
   // **=============================================**
   // ||          <<<<< GENERAL SETUP >>>>>          ||
@@ -162,10 +170,19 @@ int main() {
   window_sm.home();
   printf("Homeing Complete.\n");
 
-  // *==*==*==*==*==*=========================================*==*==*==*==*==*
-  // |  |  |  |  |  |          <<<<< MAIN LOOP >>>>>          |  |  |  |  |  |
-  // *==*==*==*==*==*=========================================*==*==*==*==*==*
+  /*
+  **=========================================================================**
+  ||                                                                         ||
+  ||  ███    ███  █████  ██ ███    ██     ██       ██████   ██████  ██████   ||
+  ||  ████  ████ ██   ██ ██ ████   ██     ██      ██    ██ ██    ██ ██   ██  ||
+  ||  ██ ████ ██ ███████ ██ ██ ██  ██     ██      ██    ██ ██    ██ ██████   ||
+  ||  ██  ██  ██ ██   ██ ██ ██  ██ ██     ██      ██    ██ ██    ██ ██       ||
+  ||  ██      ██ ██   ██ ██ ██   ████     ███████  ██████   ██████  ██       ||
+  ||                                                                         ||
+  **=========================================================================**
+  */
 
+  unsigned int loop_iteration = 0;
   while (true) {
     // If the network connection is down, set the red LED on and attempt to
     // reconnect.
@@ -232,7 +249,7 @@ int main() {
           char* arg = window_sm.getQueuedActionArg();
 
           // Parse the percentage value.
-          int percentage = CLAMP(atoi(arg), 0, 100);
+          int percentage = CLAMP(0, atoi(arg), 100);
 
           // Move to the requested position.
           window_sm.moveToPositionPercentage((float)percentage, true);
@@ -244,7 +261,7 @@ int main() {
           char* arg = window_sm.getQueuedActionArg();
 
           // Parse the percentage value.
-          uint64_t step = CLAMP(strtol(arg, NULL, 10), 0, 100);
+          uint64_t step = CLAMP(0, strtol(arg, NULL, 10), 100);
 
           // Move to the requested position.
           window_sm.moveToPosition(step, true);
@@ -261,6 +278,12 @@ int main() {
       // publishAll();
     }
 
+    // Every ten thousand loop iterations, publish all the stepper motor data to
+    // insure the server stays in sync.
+    if (loop_iteration % 10000 == 0) {
+      window_sm.publishAll();
+    }
+
     // Blink the board led through each main loop cycle.
     // This helps show whether the main loop is continuing or if the program
     // might be stuck somewhere.
@@ -268,5 +291,8 @@ int main() {
     sleep_ms(250);
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
     sleep_ms(250);
+
+    // Increment the loop iteration. It is fine if this wraps.
+    loop_iteration += 1;
   }
 }
