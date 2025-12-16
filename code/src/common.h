@@ -15,7 +15,7 @@ typedef bool direction_t;
 #endif
 
 #ifndef CLAMP
-#define CLAMP(val, upper, lower) (MAX(MIN(val, upper), lower))
+#define CLAMP(lower, val, upper) (MAX(MIN(val, upper), lower))
 #endif
 
 #endif
