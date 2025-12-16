@@ -37,7 +37,7 @@ typedef u8_t micro_step_t;
                 : SM_MS8_MIN_HALF_DELAY_QUIET)
 
 #define SM_SOFT_START_HALF_DELAY 1000
-#define SM_SOFT_START_INCREASE_FACTOR 50
+#define SM_SOFT_START_INCREASE_FACTOR 5
 
 #define SM_ARG_BUFFER_SIZE 256
 
