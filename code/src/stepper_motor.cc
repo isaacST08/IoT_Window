@@ -1,6 +1,8 @@
 #include "stepper_motor.hh"
 
 #include <hardware/gpio.h>
+#include <lwip/apps/mqtt.h>
+#include <lwip/err.h>
 #include <math.h>
 #include <pico/platform/compiler.h>
 #include <pico/time.h>
@@ -66,8 +68,6 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
   this->pins.ms1 = micro_step_1_pin;
   this->pins.ms2 = micro_step_2_pin;
 
-  printf("Hi1\n");
-
   // ----- Initialize the pins -----
   // Enable Pin.
   INIT_PIN(this->pins.enable, GPIO_OUT, 0);
@@ -83,8 +83,6 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
 
   // Stepper Motor Micro-Step Pin B.
   INIT_PIN(this->pins.ms2, GPIO_OUT, 0);
-
-  printf("Hi2\n");
 
   // ----- Set Initial Values -----
 
@@ -103,22 +101,14 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
   // No queued actions yet.
   this->queued_action = Action::NONE;
 
-  printf("Hi3\n");
-
   // Create a buffer for the arg.
   memset(&this->queued_action_arg, 0, SM_ARG_BUFFER_SIZE);
-
-  printf("Hi4\n");
 
   // Not moving.
   this->state = State::STOPPED;
 
-  printf("Hi5\n");
-
   // Set the initial micro steps value of the motor.
   this->setMicroStep(initial_micro_step);
-
-  printf("Hi5\n");
 
   // Default motor speed.
   this->setSpeed(initial_speed);
@@ -468,7 +458,7 @@ void StepperMotor::stepExact(uint64_t half_step_delay) {
   // Record the position change.
 
   // Option A:
-  if (this->getDir()) {
+  if (this->getDir() == CLOSE_DIR) {
     this->step_position -= SM_SMALLEST_MS / this->getMicroStepInt();
   } else
     this->step_position += SM_SMALLEST_MS / this->getMicroStepInt();
@@ -493,11 +483,15 @@ void StepperMotor::step() { this->stepExact(this->half_step_delay); }
 void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
   uint64_t steps_remaining = steps;
 
+  // Reset the stop motor command.
+  this->stop_motor = false;
+
   // Determine which limit switch will be the edge of this direction.
   int limit_switch = (dir == LEFT_DIR) ? LS_LEFT : LS_RIGHT;
 
   // Determine if the window is opening or closing.
   this->state = (dir == CLOSE_DIR) ? State::CLOSING : State::OPENING;
+  this->publishState();
 
   // Change the motor direction.
   this->setDir(dir);
@@ -506,9 +500,14 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
   if (soft_start) this->softStart(&steps_remaining, SM_SOFT_START_HALF_DELAY);
 
   // Move the rest of the steps at the default speed.
-  while (steps_remaining > 0 && !LS_TRIGGERED(limit_switch)) {
+  while (!this->stop_motor && steps_remaining > 0 &&
+         !LS_TRIGGERED(limit_switch)) {
     this->step();
     steps_remaining--;
+  }
+
+  if (LS_TRIGGERED(LS_CLOSED)) {
+    this->step_position = 0;
   }
 
   // Update the state of the window.
@@ -553,13 +552,13 @@ void StepperMotor::home() {
   this->setMicroStep(MS_64);
 
   // Perform the first home.
-  this->setSpeed(3);
+  this->setSpeed(HOMING_SPEED_PRIMARY);
   // while (gpio_get(LS_HOME) != 1) smStep(sm);
   while (!LS_TRIGGERED(LS_HOME)) this->step();
 
   // Move back some
   this->setDir(HOME_DIR ^ 1);
-  this->setSpeed(3);
+  this->setSpeed(HOMING_SPEED_PRIMARY);
   while (LS_TRIGGERED(LS_HOME)) this->step();
   uint current_ms = this->getMicroStepInt();
   for (int i = 0; i < (SM_FULL_STEPS_PER_MM * current_ms * 7); i++)
@@ -567,7 +566,7 @@ void StepperMotor::home() {
 
   // Perform the second, slower, home.
   this->setDir(HOME_DIR);
-  this->setSpeed(1);
+  this->setSpeed(HOMING_SPEED_SECONDARY);
   while (!LS_TRIGGERED(LS_HOME)) step();
 
   // Update the zero position of the motor.
@@ -612,9 +611,10 @@ bool StepperMotor::open() {
     this->step();
 
   // Update the motor state.
+  // if (LS_TRIGGERED(LS_OPEN)) this->step_position = WINDOW_OPEN_STEP_POSITION;
   this->updateState();
   this->queued_action = Action::NONE;
-  if (LS_TRIGGERED(LS_OPEN)) this->step_position = WINDOW_OPEN_STEP_POSITION;
+  this->publishPosition();
 
   // Return true if the motor successfully opened the window and was not called
   // to stop.
@@ -648,10 +648,11 @@ bool StepperMotor::close() {
     this->step();
 
   // Update the motor state.
-  this->updateState();
-  this->queued_action = Action::NONE;
   if (LS_TRIGGERED(LS_CLOSED))
     this->step_position = WINDOW_CLOSED_STEP_POSITION;
+  this->updateState();
+  this->queued_action = Action::NONE;
+  this->publishPosition();
 
   // Return true if the motor successfully closed the window and was not called
   // to stop.
@@ -679,11 +680,13 @@ void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
     step_delta = current_step_position - step;
   }
 
-  // Fulfill the action.
-  this->queued_action = Action::NONE;
-
   // Move the steps to move to the desired position.
   this->moveSteps(step_delta, dir, soft_start);
+
+  // Fulfill the action.
+  this->queued_action = Action::NONE;
+  this->updateState();
+  this->publishPosition();
 };
 
 /**
@@ -693,7 +696,7 @@ void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
  */
 void StepperMotor::moveToPositionPercentage(float percent, bool soft_start) {
   // Clamp and convert the percentage to the equivalent position in steps.
-  uint64_t step_position = this->percentageToSteps(CLAMP(percent, 0.0, 100.0));
+  uint64_t step_position = this->percentageToSteps(CLAMP(0.0, percent, 100.0));
 
   // Move to that position.
   this->moveToPosition(step_position, soft_start);
@@ -755,7 +758,13 @@ char* StepperMotor::getQueuedActionArg() { return this->queued_action_arg; }
 void StepperMotor::queueAction(Action action, char* arg, int arg_size) {
   this->queued_action = action;
   if (arg != NULL) {
+    int len = MIN(SM_ARG_BUFFER_SIZE, arg_size);
     memcpy(this->queued_action_arg, arg, MIN(SM_ARG_BUFFER_SIZE, arg_size));
+
+    // Insure the string is null terminated.
+    if (this->queued_action_arg[len - 1] != '\0') {
+      this->queued_action_arg[MIN(SM_ARG_BUFFER_SIZE - 1, len)] = '\0';
+    }
   }
 }
 
@@ -889,7 +898,7 @@ void StepperMotor::publishPosition() {
 #else
       sprintf(buf, "%0.1f",
               ((double)this->getPosition() /
-                  (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+               (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
 #endif
       basicMqttPublish(MQTT_TOPIC_STATE_POSITION_MM, buf, 1, 0);
     }
