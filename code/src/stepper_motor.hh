@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "action_queue.hh"
 #include "limit_switch.h"
 
 typedef u8_t micro_step_t;
@@ -43,7 +44,7 @@ typedef u8_t micro_step_t;
 
 namespace stepper_motor {
 
-enum class Action { NONE, OPEN, CLOSE, MOVE_TO_PERCENT, MOVE_TO_STEP };
+// Action enum is defined in action_queue.hh
 
 enum class State { OPEN, OPENING, CLOSED, CLOSING, STOPPED };
 
@@ -135,10 +136,22 @@ class StepperMotor {
                  uint64_t initial_speed_half_step_delay);
 
   // --- Action Queueing ---
+  // Legacy single-action interface (now uses queue internally)
   Action getQueuedAction();
   char* getQueuedActionArg();
   void queueAction(Action action, char* arg, int arg_size);
   void queueAction(Action action);
+
+  // Full queue interface
+  bool enqueueAction(Action action);
+  bool enqueueAction(Action action, const char* arg, int arg_size);
+  bool dequeueAction(Action* out_action, char* out_arg = nullptr,
+                     int out_arg_size = 0);
+  const QueuedAction* peekAction() const;
+  bool hasQueuedActions() const;
+  bool isQueueFull() const;
+  uint8_t getQueueSize() const;
+  void clearQueue();
 
   // --- States ---
   State getState();
@@ -158,8 +171,11 @@ class StepperMotor {
   void publishAll();
 
  private:
-  Action queued_action;
-  char queued_action_arg[SM_ARG_BUFFER_SIZE];
+  // Action queue (replaces single queued_action)
+  ActionQueue action_queue;
+  // Temporary buffer for legacy getQueuedActionArg() compatibility
+  char current_action_arg[SM_ARG_BUFFER_SIZE];
+
   State state;
   struct StepperMotorPins pins;
   // struct StepperMotorLimitSwitches limit_switches;

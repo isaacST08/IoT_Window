@@ -226,30 +226,42 @@ int main() {
      * the command to stop the window. This allows for undecided movement
      * (non-percentage positioning) or for emergency stops (assuming networking
      * is still operational).
+     *
+     * The action queue allows multiple actions to be queued sequentially.
+     * Actions are processed in FIFO order - first action queued is first
+     * executed. The queue holds up to 8 actions.
      */
 
-    if (window_sm.getQueuedAction() != stepper_motor::Action::NONE) {
+    if (window_sm.hasQueuedActions()) {
+      // Get the next action and its argument from the queue.
+      stepper_motor::Action action;
+      char action_arg[256];
+      window_sm.dequeueAction(&action, action_arg, sizeof(action_arg));
+
       // Perform appropriate operation.
-      switch (window_sm.getQueuedAction()) {
+      switch (action) {
         // Open window.
         case stepper_motor::Action::OPEN: {
-          printf("Open window operation activated\n");
+          printf("Open window operation activated (queue size: %d)\n",
+                 window_sm.getQueueSize());
           bool open_success = window_sm.open();
           break;
         }
 
         // Close window.
         case stepper_motor::Action::CLOSE: {
-          printf("Close window operation activated\n");
+          printf("Close window operation activated (queue size: %d)\n",
+                 window_sm.getQueueSize());
           bool close_success = window_sm.close();
           break;
         }
 
         case stepper_motor::Action::MOVE_TO_PERCENT: {
-          char* arg = window_sm.getQueuedActionArg();
-
           // Parse the percentage value.
-          int percentage = CLAMP(0, atoi(arg), 100);
+          int percentage = CLAMP(0, atoi(action_arg), 100);
+
+          printf("Move to %d%% operation activated (queue size: %d)\n",
+                 percentage, window_sm.getQueueSize());
 
           // Move to the requested position.
           window_sm.moveToPositionPercentage((float)percentage, true);
@@ -258,10 +270,11 @@ int main() {
         }
 
         case stepper_motor::Action::MOVE_TO_STEP: {
-          char* arg = window_sm.getQueuedActionArg();
+          // Parse the step value.
+          uint64_t step = CLAMP(0, strtol(action_arg, NULL, 10), 100);
 
-          // Parse the percentage value.
-          uint64_t step = CLAMP(0, strtol(arg, NULL, 10), 100);
+          printf("Move to step %llu operation activated (queue size: %d)\n",
+                 step, window_sm.getQueueSize());
 
           // Move to the requested position.
           window_sm.moveToPosition(step, true);
