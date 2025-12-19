@@ -508,12 +508,10 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         break;
       }
       case SPEED: {
-        float new_speed = atof((char*)data);
-        if (new_speed < 0.01) new_speed = 0.01;
-        printf("Setting motor speed to %f\n", new_speed);
+        float new_speed = MAX((atof((char*)data)), 0.01);
         window_sm->setSpeed(new_speed);
-        // publishStepperMotorSpeed();
-        // publishStepperMotorMicroSteps();
+        printf("Setting motor speed to %f (requested speed: %f)\n",
+               window_sm->getSpeed(), new_speed);
         break;
       }
       case OTHER: {

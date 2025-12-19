@@ -166,6 +166,7 @@ class StepperMotor {
   int64_t step_position;
   uint64_t half_step_delay;
   float speed;
+  float quiet_speed;
   mqtt_client_t* mqtt_client;
 };
 

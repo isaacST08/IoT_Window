@@ -1,20 +1,8 @@
 #include "stepper_motor.hh"
 
-// #include <hardware/gpio.h>
-// #include <lwip/apps/mqtt.h>
-// #include <lwip/err.h>
 #include <math.h>
-// #include <pico/platform/compiler.h>
-// #include <pico/time.h>
-// #include <pico/types.h>
-// #include <stdbool.h>
-// #include <stdint.h>
-// #include <stdio.h>
-// #include <string.h>
 #include <pico/cyw43_arch.h>
-
-// #include <cstdlib>
-// #include <cstring>
+#include <pico/platform/compiler.h>
 
 #include "advanced_opts.hh"
 // #include "common.h"
@@ -23,14 +11,13 @@
 // #include "opts.h"
 #include "pins.hh"
 
-// extern "C" {
-// #include "pins.h"
-// }
-
 using namespace stepper_motor;
 
 #define MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(mm_per_sec, micro_step) \
-  ceil(1000000.0 / (mm_per_sec * SM_FULL_STEPS_PER_MM * micro_step * 2))
+  (round(1000000.0 / (mm_per_sec * SM_FULL_STEPS_PER_MM * micro_step * 2)))
+
+#define US_PER_HALF_MICROSTEP_TO_MM_PER_SEC(us_per_half_ms, micro_step) \
+  (1000000.0 / (us_per_half_ms * SM_FULL_STEPS_PER_MM * micro_step * 2))
 
 #define INIT_PIN(pin, dir, val) \
   gpio_init(pin);               \
@@ -101,9 +88,6 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
 
   // Initialize the action queue.
   this->action_queue = action::ActionQueue();
-
-  // // Clear the current action arg buffer.
-  // memset(&this->current_action_arg, 0, SM_ARG_BUFFER_SIZE);
 
   // Not moving.
   this->state = State::STOPPED;
@@ -283,7 +267,9 @@ void StepperMotor::setMicroStep(uint micro_step) {
  * \returns The speed the motor is set to. This value relates to half of the
  * delay per micro step in micro seconds.
  */
-float StepperMotor::getSpeed() { return this->speed; }
+float StepperMotor::getSpeed() {
+  return (this->quiet_mode) ? this->quiet_speed : this->speed;
+}
 
 /**
  * Set the speed of the stepper motor.
@@ -291,14 +277,10 @@ float StepperMotor::getSpeed() { return this->speed; }
  * \param speed The speed to set the motor to in millimeters per second.
  */
 void StepperMotor::setSpeed(float speed) {
-  this->speed = speed;
-
   if (this->quiet_mode) {
     uint64_t half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 64);
     this->setMicroStep(MS_64);
-    this->half_step_delay = (SM_MS64_MIN_HALF_DELAY_QUIET < half_step_delay)
-                                ? half_step_delay
-                                : SM_MS64_MIN_HALF_DELAY_QUIET;
+    this->half_step_delay = MAX(half_step_delay, SM_MS64_MIN_HALF_DELAY_QUIET);
   } else {
     uint64_t possible_half_step_delay;
     uint64_t chosen_half_step_delay;
@@ -360,6 +342,14 @@ void StepperMotor::setSpeed(float speed) {
     this->half_step_delay = chosen_half_step_delay;
   }
 
+  // Calculate the speed based on what was actually set.
+  if (this->quiet_mode)
+    this->quiet_speed = US_PER_HALF_MICROSTEP_TO_MM_PER_SEC(
+        this->half_step_delay, this->getMicroStepInt());
+  else
+    this->speed = US_PER_HALF_MICROSTEP_TO_MM_PER_SEC(this->half_step_delay,
+                                                      this->getMicroStepInt());
+
   // Send the update to the MQTT server.
   this->publishSpeed();
   this->publishHalfStepDelay();
@@ -386,20 +376,6 @@ uint64_t StepperMotor::getPosition() { return this->step_position; }
  * Get the current position of the motor as a percentage.
  */
 int StepperMotor::getPositionPercentage() {
-  // printf("Motor steps: %lld\n", this->step_position);
-  // printf("Window width mm: %d\n", WINDOW_WIDTH_MM);
-  // printf("Window width full steps: %d\n",
-  //        WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM);
-  // printf("Window width micro steps: %d\n",
-  //        WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS);
-  // printf("Motor position percentage long: %llu\n",
-  //        (100 * this->step_position) /
-  //            (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-  // printf("Motor position percentage int: %d\n",
-  //        (int)(100 * this->step_position) /
-  //            (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-  // return ((100 * this->step_position) /
-  //         (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
   return (int)round(this->getPositionPercentageExact());
 }
 
@@ -545,7 +521,6 @@ void StepperMotor::home() {
   direction_t saved_dir = this->getDir();
   uint saved_ms = this->getMicroStep();
   float saved_speed = this->getSpeed();
-  printf("Saved speed: %f\n", saved_speed);
 
   // Set the motor to move in the home direction.
   this->setDir(HOME_DIR);
@@ -578,7 +553,6 @@ void StepperMotor::home() {
   this->setDir(saved_dir);
   this->setMicroStep(saved_ms);
   this->setSpeed(saved_speed);
-  printf("Restored speed: %f\n", this->getSpeed());
 
   // Send the updates to the MQTT server.
   this->publishState();
