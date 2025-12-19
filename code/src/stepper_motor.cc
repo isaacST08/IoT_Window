@@ -1,30 +1,31 @@
 #include "stepper_motor.hh"
 
-#include <hardware/gpio.h>
-#include <lwip/apps/mqtt.h>
-#include <lwip/err.h>
+// #include <hardware/gpio.h>
+// #include <lwip/apps/mqtt.h>
+// #include <lwip/err.h>
 #include <math.h>
-#include <pico/platform/compiler.h>
-#include <pico/time.h>
-#include <pico/types.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
+// #include <pico/platform/compiler.h>
+// #include <pico/time.h>
+// #include <pico/types.h>
+// #include <stdbool.h>
+// #include <stdint.h>
+// #include <stdio.h>
+// #include <string.h>
+#include <pico/cyw43_arch.h>
 
-#include <cstdlib>
-#include <cstring>
+// #include <cstdlib>
+// #include <cstring>
 
-#include "advanced_opts.h"
-#include "common.h"
-#include "limit_switch.h"
+#include "advanced_opts.hh"
+// #include "common.h"
+#include "limit_switch.hh"
 #include "mqtt_topics.hh"
-#include "opts.h"
-#include "pico/cyw43_arch.h"
+// #include "opts.h"
+#include "pins.hh"
 
-extern "C" {
-#include "pins.h"
-}
+// extern "C" {
+// #include "pins.h"
+// }
 
 using namespace stepper_motor;
 
@@ -541,9 +542,10 @@ void StepperMotor::home() {
   cyw43_arch_lwip_begin();
 
   // Save current the state of the motor.
-  bool saved_dir = this->getDir();
+  direction_t saved_dir = this->getDir();
   uint saved_ms = this->getMicroStep();
-  uint8_t saved_speed = this->getSpeed();
+  float saved_speed = this->getSpeed();
+  printf("Saved speed: %f\n", saved_speed);
 
   // Set the motor to move in the home direction.
   this->setDir(HOME_DIR);
@@ -576,6 +578,7 @@ void StepperMotor::home() {
   this->setDir(saved_dir);
   this->setMicroStep(saved_ms);
   this->setSpeed(saved_speed);
+  printf("Restored speed: %f\n", this->getSpeed());
 
   // Send the updates to the MQTT server.
   this->publishState();

@@ -1,18 +1,18 @@
-#include "network.h"
+#include "network.hh"
 
-#include <cyw43.h>
-#include <cyw43_country.h>
-#include <cyw43_ll.h>
-#include <hardware/gpio.h>
-#include <lwip/netif.h>
+// #include <cyw43.h>
+// #include <cyw43_country.h>
+// #include <cyw43_ll.h>
+// #include <hardware/gpio.h>
+// #include <lwip/netif.h>
 #include <math.h>
-#include <pico/error.h>
-#include <pico/platform/compiler.h>
+#include <pico/cyw43_arch.h>
+// #include <pico/error.h>
+// #include <pico/platform/compiler.h>
 
-#include "advanced_opts.h"
-#include "pico/cyw43_arch.h"
-#include "pins.h"
-#include "secrets.h"
+#include "advanced_opts.hh"
+// #include "pins.hh"
+#include "secrets.hh"
 
 void setHostname() {
   // Acquire the network lock.
@@ -65,27 +65,27 @@ int wifiConnect() {
       int link_state_str_len;
       switch (link_state) {
         case CYW43_LINK_DOWN:
-          link_state_str = "down";
+          link_state_str = (char*)"down";
           link_state_str_len = 4;
           break;
         case CYW43_LINK_JOIN:
-          link_state_str = "join";
+          link_state_str = (char*)"join";
           link_state_str_len = 4;
           break;
         case CYW43_LINK_FAIL:
-          link_state_str = "fail";
+          link_state_str = (char*)"fail";
           link_state_str_len = 4;
           break;
         case CYW43_LINK_NONET:
-          link_state_str = "nonet";
+          link_state_str = (char*)"nonet";
           link_state_str_len = 5;
           break;
         case CYW43_LINK_BADAUTH:
-          link_state_str = "badauth";
+          link_state_str = (char*)"badauth";
           link_state_str_len = 7;
           break;
         default:
-          link_state_str = "";
+          link_state_str = (char*)"";
           link_state_str_len = 0;
           break;
       }

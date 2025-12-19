@@ -1,7 +1,7 @@
-#ifndef IOT_WINDOW_ADV_OPTS_H
-#define IOT_WINDOW_ADV_OPTS_H
-#include "common.h"
-#include "opts.h"
+#ifndef IOT_WINDOW_ADV_OPTS_HH
+#define IOT_WINDOW_ADV_OPTS_HH
+#include "common.hh"
+#include "opts.hh"
 
 // **======================================**
 // ||          <<<<< SIDES >>>>>           ||

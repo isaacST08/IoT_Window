@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef COMMON_HH
+#define COMMON_HH
 
 #define RIGHT_SIDE 0
 #define LEFT_SIDE 1

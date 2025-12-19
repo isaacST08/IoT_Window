@@ -1,5 +1,5 @@
-#ifndef LIMIT_SWITCH_H
-#define LIMIT_SWITCH_H
+#ifndef LIMIT_SWITCH_HH
+#define LIMIT_SWITCH_HH
 
 #include <pico/types.h>
 #include <stdbool.h>

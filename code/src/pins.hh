@@ -1,9 +1,9 @@
-#ifndef PINS_H
-#define PINS_H
+#ifndef PINS_HH
+#define PINS_HH
 
-#include <hardware/gpio.h>
-#include <pico/types.h>
-#include <stdbool.h>
+// #include <hardware/gpio.h>
+// #include <pico/types.h>
+// #include <stdbool.h>
 
 #define RED_LED_PIN 0
 #define GREEN_LED_PIN 3  // Removed

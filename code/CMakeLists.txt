@@ -25,11 +25,11 @@ add_executable(${PROJECT_NAME}
 #   ${CMAKE_CURRENT_LIST_DIR}/src/network.c
 # )
 # Network
-add_library(network src/network.h src/network.c)
+add_library(network src/network.hh src/network.cc)
 target_link_libraries(network pico_stdlib pico_cyw43_arch_lwip_threadsafe_background pico_lwip_mqtt)
 target_include_directories(network PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # Pins
-add_library(pins src/pins.h src/pins.c)
+add_library(pins src/pins.hh src/pins.cc)
 target_link_libraries(pins pico_stdlib pico_cyw43_arch_lwip_threadsafe_background)
 target_include_directories(pins PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${CMAKE_CURRENT_LIST_DIR}/src)
 # Stepper Motor :: Action Queue
