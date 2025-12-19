@@ -98,11 +98,11 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
   // Zero the position (assume).
   this->step_position = 0;
 
-  // No queued actions yet.
-  this->queued_action = Action::NONE;
+  // Initialize the action queue.
+  this->action_queue = action::ActionQueue();
 
-  // Create a buffer for the arg.
-  memset(&this->queued_action_arg, 0, SM_ARG_BUFFER_SIZE);
+  // // Clear the current action arg buffer.
+  // memset(&this->current_action_arg, 0, SM_ARG_BUFFER_SIZE);
 
   // Not moving.
   this->state = State::STOPPED;
@@ -524,13 +524,13 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
 // **========================================**
 
 /**
- * Sets the flag to stop the motor.
+ * Sets the flag to stop the motor and clears all queued actions.
  *
  * It is up to the other functions to respect this flag.
  */
 void StepperMotor::stop() {
   this->stop_motor = true;
-  this->queued_action = Action::NONE;
+  this->action_queue.clear();
 }
 
 /**
@@ -613,7 +613,6 @@ bool StepperMotor::open() {
   // Update the motor state.
   // if (LS_TRIGGERED(LS_OPEN)) this->step_position = WINDOW_OPEN_STEP_POSITION;
   this->updateState();
-  this->queued_action = Action::NONE;
   this->publishPosition();
 
   // Return true if the motor successfully opened the window and was not called
@@ -651,7 +650,6 @@ bool StepperMotor::close() {
   if (LS_TRIGGERED(LS_CLOSED))
     this->step_position = WINDOW_CLOSED_STEP_POSITION;
   this->updateState();
-  this->queued_action = Action::NONE;
   this->publishPosition();
 
   // Return true if the motor successfully closed the window and was not called
@@ -683,8 +681,7 @@ void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
   // Move the steps to move to the desired position.
   this->moveSteps(step_delta, dir, soft_start);
 
-  // Fulfill the action.
-  this->queued_action = Action::NONE;
+  // Update state and publish position.
   this->updateState();
   this->publishPosition();
 };
@@ -744,37 +741,12 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
 // **===============================================**
 
 /**
- * Gets the action currently queued for the motor.
- */
-Action StepperMotor::getQueuedAction() { return this->queued_action; }
-
-char* StepperMotor::getQueuedActionArg() { return this->queued_action_arg; }
-
-/**
- * Adds the desired action as the next action to perform for this motor.
+ * Check if there are any actions in the queue.
  *
- * This is a queue of length 1.
+ * @return true if there are queued actions.
  */
-void StepperMotor::queueAction(Action action, char* arg, int arg_size) {
-  this->queued_action = action;
-  if (arg != NULL) {
-    int len = MIN(SM_ARG_BUFFER_SIZE, arg_size);
-    memcpy(this->queued_action_arg, arg, MIN(SM_ARG_BUFFER_SIZE, arg_size));
-
-    // Insure the string is null terminated.
-    if (this->queued_action_arg[len - 1] != '\0') {
-      this->queued_action_arg[MIN(SM_ARG_BUFFER_SIZE - 1, len)] = '\0';
-    }
-  }
-}
-
-/**
- * Adds the desired action as the next action to perform for this motor.
- *
- * This is a queue of length 1.
- */
-void StepperMotor::queueAction(Action action) {
-  this->queueAction(action, NULL, 0);
+bool StepperMotor::hasQueuedActions() {
+  return (!this->action_queue.isEmpty());
 }
 
 //

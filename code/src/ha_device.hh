@@ -269,7 +269,7 @@
 bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
                       u8_t retain);
 // void updateState(enum StepperMotorAction device_state);
-void updateState(stepper_motor::Action device_state);
+// void updateState(stepper_motor::Action device_state);
 bool mqttDoConnect(mqtt_client_t* client);
 void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm);
 // void haDeviceSetup(mqtt_client_t* client, StepperMotor* stepper_motor);
