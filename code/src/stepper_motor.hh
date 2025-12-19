@@ -83,6 +83,7 @@ class StepperMotor {
 
   // --- Parameters ---
   bool publish_updates;
+  action::ActionQueue action_queue;
 
   // --- Basic ---
   void enable();
@@ -136,22 +137,23 @@ class StepperMotor {
                  uint64_t initial_speed_half_step_delay);
 
   // --- Action Queueing ---
-  // Legacy single-action interface (now uses queue internally)
-  Action getQueuedAction();
-  char* getQueuedActionArg();
-  void queueAction(Action action, char* arg, int arg_size);
-  void queueAction(Action action);
+  // // Legacy single-action interface (now uses queue internally)
+  // Action getQueuedAction();
+  // char* getQueuedActionArg();
+  // void queueAction(Action action, char* arg, int arg_size);
+  // void queueAction(Action action);
 
-  // Full queue interface
-  bool enqueueAction(Action action);
-  bool enqueueAction(Action action, const char* arg, int arg_size);
-  bool dequeueAction(Action* out_action, char* out_arg = nullptr,
-                     int out_arg_size = 0);
-  const QueuedAction* peekAction() const;
-  bool hasQueuedActions() const;
-  bool isQueueFull() const;
-  uint8_t getQueueSize() const;
-  void clearQueue();
+  // // Full queue interface
+  // bool enqueueAction(action::Action action);
+  // bool enqueueAction(action::ActionType action_type, action::ActionData
+  // action_data); bool dequeueAction(Action* out_action, char* out_arg =
+  // nullptr,
+  //                    int out_arg_size = 0);
+  // const QueuedAction* peekAction() const;
+  bool hasQueuedActions();
+  // bool isQueueFull() const;
+  // uint8_t getQueueSize() const;
+  // void clearQueue();
 
   // --- States ---
   State getState();
@@ -172,9 +174,9 @@ class StepperMotor {
 
  private:
   // Action queue (replaces single queued_action)
-  ActionQueue action_queue;
+  // action::ActionQueue action_queue;
   // Temporary buffer for legacy getQueuedActionArg() compatibility
-  char current_action_arg[SM_ARG_BUFFER_SIZE];
+  // char current_action_arg[SM_ARG_BUFFER_SIZE];
 
   State state;
   struct StepperMotorPins pins;

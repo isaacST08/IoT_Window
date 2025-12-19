@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "action_queue.hh"
 #include "advanced_opts.h"
 #include "ha_device_info.hh"
 #include "mqtt_topics.hh"
@@ -309,7 +310,8 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         if (len >= 4 && memcmp((char*)data, "OPEN", 4) == 0) {
           // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "opening", 1, 0);
 
-          window_sm->queueAction(stepper_motor::Action::OPEN);
+          window_sm->action_queue.enqueue(
+              stepper_motor::action::ActionType::OPEN);
           // window_sm->setState(stepper_motor::State::OPENING);
           // publishAll();
           // updateState(OPENING);
@@ -321,7 +323,8 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         } else if (len >= 5 && memcmp((char*)data, "CLOSE", 5) == 0) {
           // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "closing", 1, 0);
 
-          window_sm->queueAction(stepper_motor::Action::CLOSE);
+          window_sm->action_queue.enqueue(
+              stepper_motor::action::ActionType::CLOSE);
           // window_sm->setState(stepper_motor::State::CLOSING);
           // publishAll();
 
@@ -350,10 +353,28 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         // if (data[len - 1] == 0) {
         //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
         // }
+        using namespace stepper_motor::action;
+
         printf("Do position percentage command stuff\n");
 
-        window_sm->queueAction(stepper_motor::Action::MOVE_TO_PERCENT,
-                               (char*)data, (int)len);
+        // Parse the percentage integer from the data (a float is not expected
+        // from HA).
+        int percent_constructor = 0;
+        int i = 0;
+        while (i < len && ('0' <= data[i] && data[i] <= '9')) {
+          percent_constructor *= 10;
+          percent_constructor += data[i] - '0';
+
+          i++;
+        }
+
+        // Create an action that includes the percentage as data.
+        Action action;
+        action.action_type = ActionType::MOVE_TO_PERCENT;
+        action.data.percent = CLAMP(0.0, (float)percent_constructor, 100.0);
+
+        // Enqueue the constructed action.
+        window_sm->action_queue.enqueue(action);
 
         // publishAll();
 
@@ -438,9 +459,26 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         // if (data[len - 1] == 0) {
         //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
         // }
+        using namespace stepper_motor::action;
+
         printf("Do position steps command stuff\n");
-        window_sm->queueAction(stepper_motor::Action::MOVE_TO_STEP, (char*)data,
-                               (int)len);
+
+        // Create an action.
+        Action action;
+        action.action_type = ActionType::MOVE_TO_STEP;
+        action.data.step = 0;
+
+        // Parse the step integer from the data.
+        int i = 0;
+        while (i < len && ('0' <= data[i] && data[i] <= '9')) {
+          action.data.step *= 10;
+          action.data.step += data[i] - '0';
+          i++;
+        }
+
+        // Enqueue the constructed action.
+        window_sm->action_queue.enqueue(action);
+
         break;
       }
       case POSITION_MM: {
