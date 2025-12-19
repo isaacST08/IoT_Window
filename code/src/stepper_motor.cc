@@ -740,105 +740,6 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
 // ||          <<<<< ACTION QUEUEING >>>>>          ||
 // **===============================================**
 
-// --- Legacy Interface (for backward compatibility) ---
-
-// /**
-//  * Gets the action at the front of the queue without removing it.
-//  * Returns Action::NONE if queue is empty.
-//  */
-// Action StepperMotor::getQueuedAction() {
-//   const QueuedAction* front = AQ_PEEK(&this->action_queue);
-//   if (front == NULL) {
-//     return Action::NONE;
-//   }
-//   return front->action;
-// }
-
-// /**
-//  * Gets the argument of the action at the front of the queue.
-//  * Copies the argument to an internal buffer for compatibility.
-//  */
-// char* StepperMotor::getQueuedActionArg() {
-//   const QueuedAction* front = AQ_PEEK(&this->action_queue);
-//   if (front == NULL || !front->has_arg) {
-//     this->current_action_arg[0] = '\0';
-//   } else {
-//     memcpy(this->current_action_arg, front->arg, SM_ARG_BUFFER_SIZE);
-//   }
-//   return this->current_action_arg;
-// }
-
-// /**
-//  * Adds the desired action to the queue.
-//  * Legacy interface - now enqueues rather than overwriting.
-//  */
-// void StepperMotor::queueAction(Action action, char* arg, int arg_size) {
-//   bool result;
-//   AQ_ENQUEUE_WITH_ARG(&this->action_queue, action, arg, arg_size, result);
-// }
-//
-// /**
-//  * Adds the desired action to the queue without an argument.
-//  * Legacy interface - now enqueues rather than overwriting.
-//  */
-// void StepperMotor::queueAction(Action action) {
-//   bool result;
-//   AQ_ENQUEUE(&this->action_queue, action, result);
-// }
-
-// --- Full Queue Interface ---
-
-// /**
-//  * Enqueue an action without an argument.
-//  *
-//  * @param action The action to add to the queue.
-//  * @return true if successfully enqueued, false if queue is full.
-//  */
-// bool StepperMotor::enqueueAction(Action action) {
-//   bool result;
-//   AQ_ENQUEUE(&this->action_queue, action, result);
-//   return result;
-// }
-//
-// /**
-//  * Enqueue an action with an argument.
-//  *
-//  * @param action The action to add to the queue.
-//  * @param arg The argument string for the action.
-//  * @param arg_size The size of the argument string.
-//  * @return true if successfully enqueued, false if queue is full.
-//  */
-// bool StepperMotor::enqueueAction(Action action, const char* arg, int
-// arg_size) {
-//   bool result;
-//   AQ_ENQUEUE_WITH_ARG(&this->action_queue, action, arg, arg_size, result);
-//   return result;
-// }
-//
-// /**
-//  * Dequeue the next action from the front of the queue.
-//  *
-//  * @param out_action Pointer to store the dequeued action.
-//  * @param out_arg Buffer to store the action's argument (can be NULL).
-//  * @param out_arg_size Size of the output argument buffer.
-//  * @return true if an action was dequeued, false if queue was empty.
-//  */
-// bool StepperMotor::dequeueAction(Action* out_action, char* out_arg,
-//                                   int out_arg_size) {
-//   bool result;
-//   AQ_DEQUEUE(&this->action_queue, out_action, out_arg, out_arg_size, result);
-//   return result;
-// }
-//
-// /**
-//  * Peek at the next action without removing it from the queue.
-//  *
-//  * @return Pointer to the front QueuedAction, or NULL if empty.
-//  */
-// const QueuedAction* StepperMotor::peekAction() const {
-//   return AQ_PEEK(&this->action_queue);
-// }
-
 /**
  * Check if there are any actions in the queue.
  *
@@ -847,31 +748,6 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
 bool StepperMotor::hasQueuedActions() {
   return (!this->action_queue.isEmpty());
 }
-
-// /**
-//  * Check if the queue is full.
-//  *
-//  * @return true if no more actions can be enqueued.
-//  */
-// bool StepperMotor::isQueueFull() const {
-//   return AQ_IS_FULL(&this->action_queue);
-// }
-//
-// /**
-//  * Get the number of actions currently in the queue.
-//  *
-//  * @return The number of queued actions.
-//  */
-// uint8_t StepperMotor::getQueueSize() const {
-//   return AQ_SIZE(&this->action_queue);
-// }
-//
-// /**
-//  * Clear all actions from the queue.
-//  */
-// void StepperMotor::clearQueue() {
-//   AQ_CLEAR(&this->action_queue);
-// }
 
 //
 //
