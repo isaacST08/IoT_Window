@@ -1,4 +1,4 @@
-#include "pins.h"
+#include "pins.hh"
 
 #include <hardware/gpio.h>
 

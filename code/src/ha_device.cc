@@ -11,18 +11,19 @@
 #include <string.h>
 
 #include "action_queue.hh"
-#include "advanced_opts.h"
+#include "advanced_opts.hh"
 #include "ha_device_info.hh"
 #include "mqtt_topics.hh"
-#include "opts.h"
+#include "network.hh"
+#include "opts.hh"
 #include "pico/cyw43_arch.h"
-#include "secrets.h"
+#include "pins.hh"
+#include "secrets.hh"
 #include "stepper_motor.hh"
 
-extern "C" {
-#include "network.h"
-#include "pins.h"
-}
+// extern "C" {
+// #include "network.h"
+// }
 
 #define MQTT_SUBSCRIBE(client, topic, err)                                \
   for (int i = 0; i < 3; i++) {                                           \

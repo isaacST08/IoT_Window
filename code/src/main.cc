@@ -1,22 +1,26 @@
+#include <hardware/gpio.h>
+#include <pico/cyw43_arch.h>
 #include <pico/stdio.h>
-#include <pico/time.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include <cstdio>
-#include <cstdlib>
-
+// #include <pico/time.h>
+// #include <stdbool.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <unistd.h>
+//
+// #include <cstdio>
+// #include <cstdlib>
+//
 #include "ha_device.hh"
-#include "lwip/apps/mqtt.h"
-#include "pico/cyw43_arch.h"
+// #include "lwip/apps/mqtt.h"
+#include "opts.hh"
+// #include "pico/cyw43_arch.h"
+#include "network.hh"
+#include "pins.hh"
 #include "stepper_motor.hh"
 
-extern "C" {
-#include "network.h"
-#include "pins.h"
-}
+// extern "C" {
+// #include "network.h"
+// }
 
 /**
  * This is the main program start for the IoT window device.
@@ -127,8 +131,8 @@ int main() {
 
   // Initialize stepper motor for the window.
   stepper_motor::StepperMotor window_sm(SM_ENABLE_PIN, SM_DIR_PIN, SM_PULSE_PIN,
-                                        SM_MS1_PIN, SM_MS2_PIN, MS_64, 1,
-                                        mqtt_client);
+                                        SM_MS1_PIN, SM_MS2_PIN, MS_64,
+                                        INITIAL_MOTOR_SPEED, mqtt_client);
   printf("Motor setup complete.\n");
 
   // Setup the Home Assistant device.

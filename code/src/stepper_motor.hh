@@ -1,15 +1,16 @@
 #ifndef STEPPER_MOTOR_HH
 #define STEPPER_MOTOR_HH
 
-#include <common.h>
 #include <lwip/apps/mqtt.h>
-#include <lwip/arch.h>
-#include <pico/types.h>
-#include <stdbool.h>
+
+#include <common.hh>
+// #include <lwip/arch.h>
+// #include <pico/types.h>
+// #include <stdbool.h>
 #include <stdint.h>
 
 #include "action_queue.hh"
-#include "limit_switch.h"
+// #include "limit_switch.h"
 
 typedef u8_t micro_step_t;
 

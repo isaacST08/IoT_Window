@@ -1,7 +1,7 @@
-#ifndef IOT_WINDOW_OPTS_H
-#define IOT_WINDOW_OPTS_H
-#include "common.h"
-#include "pins.h"
+#ifndef IOT_WINDOW_OPTS_HH
+#define IOT_WINDOW_OPTS_HH
+#include "common.hh"
+#include "pins.hh"
 
 // #define OPEN_POSITION_MM 0
 // #define CLOSED_POSITION_MM 100
@@ -19,6 +19,9 @@
 
 // Which side to home to.
 #define HOME_SIDE RIGHT_SIDE
+
+/** Initial speed of the motor in mm/s on boot up. */
+#define INITIAL_MOTOR_SPEED 5.0
 
 // **==============================================**
 // ||          <<<<< BASIC OPTIONS >>>>>           ||

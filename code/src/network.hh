@@ -1,5 +1,5 @@
-#ifndef NETWORK_H
-#define NETWORK_H
+#ifndef NETWORK_HH
+#define NETWORK_HH
 
 int networkInit();
 int wifiConnect();
