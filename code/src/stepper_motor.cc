@@ -394,7 +394,7 @@ float StepperMotor::getPositionPercentageExact() {
  * @return The percentage the number of steps represents.
  */
 float StepperMotor::stepsToPercentage(uint64_t steps) {
-  return ((100.0 * this->step_position) /
+  return ((100.0 * steps) /
           (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
 };
 
