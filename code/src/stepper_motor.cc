@@ -1,5 +1,6 @@
 #include "stepper_motor.hh"
 
+#include <hardware/watchdog.h>
 #include <math.h>
 #include <pico/cyw43_arch.h>
 #include <pico/platform/compiler.h>
@@ -443,6 +444,9 @@ void StepperMotor::stepExact(uint64_t half_step_delay) {
   // // Option B:
   // this->step_position +=
   //     (1 - 2 * this->getDir()) * (SM_SMALLEST_MS / this->getMicroStepInt());
+
+  // Feed the watchdog during long motor operations to prevent reset.
+  watchdog_update();
 }
 
 /**
