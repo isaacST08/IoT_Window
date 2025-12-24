@@ -5,6 +5,7 @@
 // #include <cyw43_ll.h>
 // #include <hardware/gpio.h>
 // #include <lwip/netif.h>
+#include <hardware/watchdog.h>
 #include <math.h>
 #include <pico/cyw43_arch.h>
 // #include <pico/error.h>
@@ -58,6 +59,9 @@ int wifiConnect() {
   int connect_attempt = 0;
   while (connect_attempt++ != WIFI_CONNECTION_MAX_ATTEMPTS &&
          link_state != CYW43_LINK_JOIN) {
+    // Feed the watchdog during potentially long connection attempts.
+    watchdog_update();
+
     // If not the first connection attempt, print out the attempt number and the
     // link state.
     if (connect_attempt > 1) {
@@ -139,6 +143,7 @@ int wifiConnect() {
           sleep_ms(50);
           cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
           sleep_ms(100);
+          watchdog_update();  // Feed watchdog during retry
         }
 
         // Update the link state.

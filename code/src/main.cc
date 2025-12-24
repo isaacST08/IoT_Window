@@ -1,4 +1,5 @@
 #include <hardware/gpio.h>
+#include <hardware/watchdog.h>
 #include <pico/cyw43_arch.h>
 #include <pico/stdio.h>
 // #include <pico/time.h>
@@ -174,6 +175,13 @@ int main() {
   window_sm.home();
   printf("Homeing Complete.\n");
 
+  // Enable the hardware watchdog timer.
+  // If watchdog_update() is not called within 8 seconds, the device will reset.
+  // This prevents the device from getting stuck in an infinite loop.
+  printf("Enabling watchdog timer...\n");
+  watchdog_enable(8000, 1);  // 8 second timeout, pause on debug
+  printf("Watchdog enabled.\n");
+
   /*
   **=========================================================================**
   ||                                                                         ||
@@ -188,6 +196,9 @@ int main() {
 
   unsigned int loop_iteration = 0;
   while (true) {
+    // Feed the watchdog to prevent reset.
+    watchdog_update();
+
     // If the network connection is down, set the red LED on and attempt to
     // reconnect.
     if (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=
