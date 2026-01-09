@@ -32,8 +32,8 @@
 #define CLOSE_DIR (CLOSED_SIDE ^ INVERT_DIRECTION)
 #define OPEN_DIR (OPEN_SIDE ^ INVERT_DIRECTION)
 
-#define HOMING_SPEED_PRIMARY 5
-#define HOMING_SPEED_SECONDARY 1
+#define CALIBRATION_SPEED_PRIMARY 5
+#define CALIBRATION_SPEED_SECONDARY 1
 
 // **===============================================**
 // ||          <<<<< LIMIT SWITCHES >>>>>           ||

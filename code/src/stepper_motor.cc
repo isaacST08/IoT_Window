@@ -5,7 +5,7 @@
 #include <pico/platform/compiler.h>
 
 #include "advanced_opts.hh"
-// #include "common.h"
+#include "common.hh"
 #include "limit_switch.hh"
 #include "mqtt_topics.hh"
 // #include "opts.h"
@@ -510,6 +510,33 @@ void StepperMotor::stop() {
   this->action_queue.clear();
 }
 
+void StepperMotor::calibrateEndstop(direction_t dir) {
+  // Get the limit switch for this direction.
+  int ls = (dir == LEFT_DIR) ? LS_LEFT : LS_RIGHT;
+
+  // Set the motor to move in the desired direction.
+  this->setDir(dir);
+
+  // Set the micro steps to the most precise.
+  this->setMicroStep(MS_64);
+
+  // Perform the first calibration (rough pass).
+  this->setSpeed(CALIBRATION_SPEED_PRIMARY);
+  while (!LS_TRIGGERED(ls)) this->step();
+
+  // Back off from end stop.
+  this->swapDir();
+  while (LS_TRIGGERED(ls)) this->step();  // Back off from limit switch.
+  uint current_ms = this->getMicroStepInt();
+  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * current_ms * 7); i++)
+    this->step();
+
+  // Perform the second, more accurate calibration pass.
+  this->setDir(dir);
+  this->setSpeed(CALIBRATION_SPEED_SECONDARY);
+  while (!LS_TRIGGERED(ls)) step();
+}
+
 /**
  * Homes the stepper motor to find the zero position.
  */
@@ -522,32 +549,43 @@ void StepperMotor::home() {
   uint saved_ms = this->getMicroStep();
   float saved_speed = this->getSpeed();
 
-  // Set the motor to move in the home direction.
-  this->setDir(HOME_DIR);
-
-  // Set the micro steps to the most precise.
-  this->setMicroStep(MS_64);
-
-  // Perform the first home.
-  this->setSpeed(HOMING_SPEED_PRIMARY);
-  // while (gpio_get(LS_HOME) != 1) smStep(sm);
-  while (!LS_TRIGGERED(LS_HOME)) this->step();
-
-  // Move back some
-  this->setDir(HOME_DIR ^ 1);
-  this->setSpeed(HOMING_SPEED_PRIMARY);
-  while (LS_TRIGGERED(LS_HOME)) this->step();
-  uint current_ms = this->getMicroStepInt();
-  for (int i = 0; i < (SM_FULL_STEPS_PER_MM * current_ms * 7); i++)
-    this->step();
-
-  // Perform the second, slower, home.
-  this->setDir(HOME_DIR);
-  this->setSpeed(HOMING_SPEED_SECONDARY);
-  while (!LS_TRIGGERED(LS_HOME)) step();
+  // Home the motor.
+  this->calibrateEndstop(HOME_DIR);
 
   // Update the zero position of the motor.
   this->step_position = 0;
+
+  // Restore the motor settings.
+  this->setDir(saved_dir);
+  this->setMicroStep(saved_ms);
+  this->setSpeed(saved_speed);
+
+  // Send the updates to the MQTT server.
+  this->publishState();
+  this->publishPosition();
+
+  // Release the network lock.
+  cyw43_arch_lwip_end();
+}
+
+void StepperMotor::calibrate() {
+  // Acquire the network lock so we don't get interrupted.
+  cyw43_arch_lwip_begin();
+
+  // Save current the state of the motor.
+  direction_t saved_dir = this->getDir();
+  uint saved_ms = this->getMicroStep();
+  float saved_speed = this->getSpeed();
+
+  // Home and update the zero position of the motor.
+  this->calibrateEndstop(HOME_DIR);
+  this->step_position = 0;
+
+  // Calibrate the opposite side.
+  this->calibrateEndstop(!HOME_DIR);
+
+  // Return to a closed position.
+  this->close();
 
   // Restore the motor settings.
   this->setDir(saved_dir);

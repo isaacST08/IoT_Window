@@ -127,7 +127,10 @@ class StepperMotor {
   // --- Movement ---
   void stop();
 
+  void calibrateEndstop(direction_t dir);
   void home();
+  void calibrate();
+
   bool open();
   bool close();
 
