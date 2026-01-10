@@ -1,26 +1,13 @@
 #include <hardware/gpio.h>
+#include <hardware/watchdog.h>
 #include <pico/cyw43_arch.h>
 #include <pico/stdio.h>
-// #include <pico/time.h>
-// #include <stdbool.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <unistd.h>
-//
-// #include <cstdio>
-// #include <cstdlib>
-//
+
 #include "ha_device.hh"
-// #include "lwip/apps/mqtt.h"
-#include "opts.hh"
-// #include "pico/cyw43_arch.h"
 #include "network.hh"
+#include "opts.hh"
 #include "pins.hh"
 #include "stepper_motor.hh"
-
-// extern "C" {
-// #include "network.h"
-// }
 
 /**
  * This is the main program start for the IoT window device.
@@ -69,8 +56,7 @@ int main() {
   // Wave LEDs to visualize the start of the program without the need of a
   // console.
   {
-    uint led_order[4] = {RED_LED_PIN, GREEN_LED_PIN, YELLOW_LED_PIN,
-                         BLUE_LED_PIN};
+    uint led_order[4] = {RED_LED_PIN, YELLOW_LED_PIN, BLUE_LED_PIN};
     int ms = 100;
 
     // Wave 3 times.
@@ -85,6 +71,9 @@ int main() {
       }
     }
   }
+
+  // Enable the yellow LED if the reboot was caused by the watchdog.
+  if (watchdog_enable_caused_reboot()) gpio_put(YELLOW_LED_PIN, 1);
 
   // **=============================================**
   // ||          <<<<< NETWORK SETUP >>>>>          ||
@@ -174,6 +163,18 @@ int main() {
   window_sm.home();
   printf("Homeing Complete.\n");
 
+  // **========================================**
+  // ||          <<<<< WATCHDOG >>>>>          ||
+  // **========================================**
+
+  printf("Enabling watchdog...");
+  watchdog_enable(8388, 1);  // 8.388 seconds, max for RP2040.
+  printf(" done.\n");
+
+  // Disable the yellow LED that indicated this boot was caused by the watchdog
+  // timing out.
+  gpio_put(YELLOW_LED_PIN, 0);
+
   /*
   **=========================================================================**
   ||                                                                         ||
@@ -188,6 +189,9 @@ int main() {
 
   unsigned int loop_iteration = 0;
   while (true) {
+    // Feed watchdog on each loop.
+    watchdog_update();
+
     // If the network connection is down, set the red LED on and attempt to
     // reconnect.
     if (cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA) !=

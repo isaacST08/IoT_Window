@@ -3,6 +3,7 @@
 // #include <cyw43.h>
 #include <cyw43_configport.h>
 #include <hardware/gpio.h>
+#include <hardware/watchdog.h>
 #include <lwip/apps/mqtt.h>
 #include <pico/time.h>
 #include <stdbool.h>
@@ -40,6 +41,7 @@
       }                                                                   \
     } else {                                                              \
       printf("Succesfully subscribed to %s\n", topic);                    \
+      watchdog_update();                                                  \
       break;                                                              \
     }                                                                     \
   }                                                                       \

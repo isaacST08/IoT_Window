@@ -1,5 +1,6 @@
 #include "stepper_motor.hh"
 
+#include <hardware/watchdog.h>
 #include <math.h>
 #include <pico/cyw43_arch.h>
 #include <pico/platform/compiler.h>
@@ -443,6 +444,10 @@ void StepperMotor::stepExact(uint64_t half_step_delay) {
   // // Option B:
   // this->step_position +=
   //     (1 - 2 * this->getDir()) * (SM_SMALLEST_MS / this->getMicroStepInt());
+
+  // Feed the watchdog when stepping to prevent a timeout during long move
+  // operations.
+  watchdog_update();
 }
 
 /**
@@ -550,7 +555,12 @@ void StepperMotor::home() {
   float saved_speed = this->getSpeed();
 
   // Home the motor.
-  this->calibrateEndstop(HOME_DIR);
+  // Only home the motor if not already at the hope position and the system was
+  // not caused by the watchdog timing out. This prevents cases of boot cycling
+  // and continuously opening and closing the window, which could be a security
+  // risk (for both malicious and non-malicious cases).
+  if (!LS_TRIGGERED(LS_HOME) || !watchdog_enable_caused_reboot())
+    this->calibrateEndstop(HOME_DIR);
 
   // Update the zero position of the motor.
   this->step_position = 0;

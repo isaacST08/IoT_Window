@@ -1,17 +1,10 @@
 #include "network.hh"
 
-// #include <cyw43.h>
-// #include <cyw43_country.h>
-// #include <cyw43_ll.h>
-// #include <hardware/gpio.h>
-// #include <lwip/netif.h>
+#include <hardware/watchdog.h>
 #include <math.h>
 #include <pico/cyw43_arch.h>
-// #include <pico/error.h>
-// #include <pico/platform/compiler.h>
 
 #include "advanced_opts.hh"
-// #include "pins.hh"
 #include "secrets.hh"
 
 void setHostname() {
@@ -58,6 +51,9 @@ int wifiConnect() {
   int connect_attempt = 0;
   while (connect_attempt++ != WIFI_CONNECTION_MAX_ATTEMPTS &&
          link_state != CYW43_LINK_JOIN) {
+    // Feed the watchdog during extended connection attempts.
+    watchdog_update();
+
     // If not the first connection attempt, print out the attempt number and the
     // link state.
     if (connect_attempt > 1) {
@@ -135,6 +131,7 @@ int wifiConnect() {
       default: {
         // Cycle the board LED to signal that the process has not frozen.
         for (int i = 0; i < 3; i++) {
+          watchdog_update();
           cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
           sleep_ms(50);
           cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
@@ -168,6 +165,7 @@ int networkInit() {
   // Blink board LED 5 times fast and leave on to signal chip initialization
   // success.
   for (int i = 0; i < 10; i++) {
+    watchdog_update();
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
     sleep_ms(50);
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
@@ -196,6 +194,7 @@ int networkInit() {
   // Blink the board led fast 10 times to indicate a Wi-Fi connection was
   // made.
   for (int i = 0; i < 10; i++) {
+    watchdog_update();
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     sleep_ms(100);
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
