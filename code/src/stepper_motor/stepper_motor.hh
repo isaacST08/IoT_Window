@@ -158,6 +158,7 @@ class StepperMotor {
   void publishState();
   void publishMicroSteps();
   void publishHalfStepDelay();
+  void publishFullOpenPosition();
   void publishAll();
 
  private:
@@ -168,6 +169,7 @@ class StepperMotor {
   bool stop_motor;
   int64_t step_position;
   uint64_t half_step_delay;
+  int64_t window_open_step_position;
   float speed;
   float quiet_speed;
   mqtt_client_t* mqtt_client;

@@ -75,6 +75,9 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
 
   // ----- Set Initial Values -----
 
+  // Set the default window width.
+  this->window_open_step_position = DEFAULT_WINDOW_OPEN_STEP_POSITION;
+
   // Don't publish updates until the MQTT client is fully setup.
   this->publish_updates = false;
 
@@ -395,8 +398,7 @@ float StepperMotor::getPositionPercentageExact() {
  * @return The percentage the number of steps represents.
  */
 float StepperMotor::stepsToPercentage(uint64_t steps) {
-  return ((100.0 * steps) /
-          (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
+  return ((100.0 * steps) / (this->window_open_step_position));
 };
 
 /**
@@ -407,9 +409,8 @@ float StepperMotor::stepsToPercentage(uint64_t steps) {
  * @return The number of steps the percentage represents.
  */
 uint64_t StepperMotor::percentageToSteps(float percentage) {
-  return ((uint64_t)llround(
-      percentage * (WINDOW_WIDTH_MM * SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS) /
-      100));
+  return (
+      (uint64_t)llround(percentage * (this->window_open_step_position) / 100));
 };
 
 //
@@ -593,8 +594,10 @@ void StepperMotor::calibrate() {
 
   // Calibrate the opposite side.
   this->calibrateEndstop(!HOME_DIR);
+  this->window_open_step_position = this->step_position;
 
   // Return to a closed position.
+  this->setSpeed(CALIBRATION_SPEED_PRIMARY);
   this->close();
 
   // Restore the motor settings.
@@ -605,6 +608,7 @@ void StepperMotor::calibrate() {
   // Send the updates to the MQTT server.
   this->publishState();
   this->publishPosition();
+  this->publishFullOpenPosition();
 
   // Release the network lock.
   cyw43_arch_lwip_end();
@@ -632,11 +636,14 @@ bool StepperMotor::open() {
   // - The encoded window position in steps reaches the expected open position.
   this->softStart(NULL, SM_SOFT_START_HALF_DELAY);
   while (!this->stop_motor && !LS_TRIGGERED(LS_OPEN) &&
-         this->step_position != WINDOW_OPEN_STEP_POSITION)
+         this->step_position < this->window_open_step_position)
     this->step();
 
   // Update the motor state.
-  // if (LS_TRIGGERED(LS_OPEN)) this->step_position = WINDOW_OPEN_STEP_POSITION;
+  if (LS_TRIGGERED(LS_OPEN)) {
+    this->window_open_step_position = this->step_position;
+    publishFullOpenPosition();
+  }
   this->updateState();
   this->publishPosition();
 
@@ -668,7 +675,7 @@ bool StepperMotor::close() {
   //   position.
   this->softStart(NULL, SM_SOFT_START_HALF_DELAY);
   while (!this->stop_motor && !LS_TRIGGERED(LS_CLOSED) &&
-         this->step_position != WINDOW_CLOSED_STEP_POSITION)
+         this->step_position > WINDOW_CLOSED_STEP_POSITION)
     this->step();
 
   // Update the motor state.
@@ -942,6 +949,16 @@ void StepperMotor::publishHalfStepDelay() {
   }
 }
 
+void StepperMotor::publishFullOpenPosition() {
+  if (this->mqtt_client != NULL) {
+    char buf[64];
+    sprintf(buf, "%0.1f",
+            ((double)this->window_open_step_position /
+             (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
+    basicMqttPublish(MQTT_TOPIC_SENSOR_FULL_OPEN_MEASUREMENT, buf, 1, 0);
+  }
+}
+
 void StepperMotor::publishAll() {
   this->publishSpeed();
   this->publishQuietMode();
@@ -949,4 +966,5 @@ void StepperMotor::publishAll() {
   this->publishState();
   this->publishMicroSteps();
   this->publishHalfStepDelay();
+  this->publishFullOpenPosition();
 }

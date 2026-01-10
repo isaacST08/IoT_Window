@@ -255,6 +255,27 @@
   "\"state_topic\":\"" MQTT_TOPIC_SENSOR_HALF_STEP_DELAY          \
   "\","                                                           \
   "\"icon\":\"mdi:timer-sand-complete\""                          \
+  "},"                                                            \
+                                                                  \
+  /* Window Full Open Measurement Sensor */                       \
+  "\"" HA_DEVICE_ID                                               \
+  "-Window_Full_Open_Measurement_Sensor\":{"                      \
+  "\"name\":\"Fully Open Position\","                             \
+  "\"unique_id\":\"" HA_DEVICE_ID                                 \
+  "-Window_Full_Open_Measurement_Sensor\","                       \
+  "\"optimistic\":\"false\","                                     \
+  "\"availability\":{"                                            \
+  "\"payload_available\":\"online\","                             \
+  "\"payload_not_available\":\"offline\","                        \
+  "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
+  "\""                                                            \
+  "},"                                                            \
+  "\"p\":\"sensor\","                                             \
+  "\"device_class\":\"distance\","                                \
+  "\"unit_of_measurement\":\"mm\","                               \
+  "\"state_topic\":\"" MQTT_TOPIC_SENSOR_FULL_OPEN_MEASUREMENT    \
+  "\","                                                           \
+  "\"icon\":\"mdi:tape-measure\""                                 \
   "}"                                                             \
                                                                   \
   "},"                                                            \

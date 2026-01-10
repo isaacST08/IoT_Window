@@ -22,6 +22,8 @@
 #define MQTT_TOPIC_COMMAND_CALIBRATE MQTT_TOPIC_BASE "cmd/calibrate"
 #define MQTT_TOPIC_SENSOR_MICRO_STEPS MQTT_TOPIC_BASE "snsr/micrstp"
 #define MQTT_TOPIC_SENSOR_HALF_STEP_DELAY MQTT_TOPIC_BASE "snsr/stepdelay"
+#define MQTT_TOPIC_SENSOR_FULL_OPEN_MEASUREMENT \
+  MQTT_TOPIC_BASE "snsr/fullopnmsr"
 
 // ----- Device Discovery -----
 #define HA_DEVICE_MQTT_DISCOVERY_TOPIC "hass/device/" HA_DEVICE_ID "/config"
