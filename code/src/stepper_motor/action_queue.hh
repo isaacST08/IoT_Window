@@ -34,7 +34,15 @@ namespace stepper_motor::action {
 
 // Action type enum - must be defined here since action_queue.hh is included
 // first
-enum class ActionType { NONE, OPEN, CLOSE, MOVE_TO_PERCENT, MOVE_TO_STEP };
+enum class ActionType {
+  NONE,
+  OPEN,
+  CLOSE,
+  MOVE_TO_PERCENT,
+  MOVE_TO_STEP,
+  HOME,
+  CALIBRATE
+};
 
 union ActionData {
   float percent;
