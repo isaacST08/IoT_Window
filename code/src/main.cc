@@ -290,6 +290,16 @@ int main() {
           break;
         }
 
+        case ActionType::HOME: {
+          window_sm.home();
+          break;
+        }
+
+        case ActionType::CALIBRATE: {
+          window_sm.calibrate();
+          break;
+        }
+
         // Do nothing.
         case ActionType::NONE:
           break;

@@ -54,7 +54,9 @@ enum InPub {
   POSITION_STEPS,
   POSITION_MM,
   QUIET,
-  SPEED
+  SPEED,
+  HOME,
+  CALIBRATE
 };
 
 // **===============================================**
@@ -289,6 +291,10 @@ static void mqttIncomingPublishCb(void* arg, const char* topic, u32_t tot_len) {
     inpub_id = QUIET;
   } else if (strcmp(topic, MQTT_TOPIC_COMMAND_SPEED) == 0) {
     inpub_id = SPEED;
+  } else if (strcmp(topic, MQTT_TOPIC_COMMAND_HOME) == 0) {
+    inpub_id = HOME;
+  } else if (strcmp(topic, MQTT_TOPIC_COMMAND_CALIBRATE) == 0) {
+    inpub_id = CALIBRATE;
   } else {
     /* For all other topics */
     inpub_id = OTHER;
@@ -309,51 +315,23 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
     switch (inpub_id) {
       case GENERAL: {
         if (len >= 4 && memcmp((char*)data, "OPEN", 4) == 0) {
-          // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "opening", 1, 0);
-
           window_sm->action_queue.enqueue(
               stepper_motor::action::ActionType::OPEN);
-          // window_sm->setState(stepper_motor::State::OPENING);
-          // publishAll();
-          // updateState(OPENING);
-          // *queued_motor_move = OPEN;
           printf("Opening...\n");
-          // bool open_success = sm_open();
-          // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL,
-          //                  (open_success) ? "open" : "stopped", 1, 0);
-        } else if (len >= 5 && memcmp((char*)data, "CLOSE", 5) == 0) {
-          // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "closing", 1, 0);
 
+        } else if (len >= 5 && memcmp((char*)data, "CLOSE", 5) == 0) {
           window_sm->action_queue.enqueue(
               stepper_motor::action::ActionType::CLOSE);
-          // window_sm->setState(stepper_motor::State::CLOSING);
-          // publishAll();
-
-          // updateState(CLOSING);
-          // *queued_motor_move = CLOSED;
           printf("Closing...\n");
-          // bool close_success = sm_close();
-          // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL,
-          //                  (close_success) ? "closed" : "stopped", 1, 0);
         } else if (len >= 4 && memcmp((char*)data, "STOP", 4) == 0) {
           window_sm->stop();
-          // smStop(window_stepper_motor);
-          // sm_stop();
-          // basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, "stopped", 1, 0);
-          // updateState(STOPPED);
-          // publishAll();
         } else {
           printf("Unknown general command\n");
         }
 
-        // printf("Do general command stuff\n");
         break;
       }
       case POSITION_PERCENT: {
-        // /* Don't trust the publisher, check zero termination */
-        // if (data[len - 1] == 0) {
-        //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
-        // }
         using namespace stepper_motor::action;
 
         printf("Do position percentage command stuff\n");
@@ -377,89 +355,9 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         // Enqueue the constructed action.
         window_sm->action_queue.enqueue(action);
 
-        // publishAll();
-
-        //   int new_position_percent = atoi((char*)data);
-        //   while (new_position_percent > 100)
-        //     new_position_percent = new_position_percent / 10;
-        //
-        //   int new_position_steps =
-        //       ((SM_CLOSED_POS_FULL_STEPS - SM_OPEN_POS_FULL_STEPS) *
-        //        new_position_percent) /
-        //       100;
-        //   if (new_position_steps < 0)
-        //     new_position_steps = new_position_steps * -1;
-        //
-        //   int position_change_steps = motor_position_steps -
-        //   new_position_steps; printf(
-        //       "Change position requested.\n\tSteps | New position: %d,
-        //       Current " "position: %d, position change: %d\n",
-        //       new_position_steps, motor_position_steps,
-        //       position_change_steps);
-        //
-        //   int micro_step;
-        //   switch (get_micro_step()) {
-        //     case MS_8:
-        //       micro_step = 8;
-        //       break;
-        //     case MS_16:
-        //       micro_step = 16;
-        //       break;
-        //     case MS_32:
-        //       micro_step = 32;
-        //       break;
-        //     case MS_64:
-        //       micro_step = 64;
-        //       break;
-        //     default:
-        //       micro_step = 8;
-        //       break;
-        //   }
-        //   int steps = position_change_steps * micro_step;
-        //   // (position_change * WINDOW_OPEN_FULL_STEPS * micro_step) / 100;
-        //   if (steps < 0) {
-        //     steps = steps * -1;
-        //     sm_set_dir(LEFT_DIR);
-        //   } else {
-        //     sm_set_dir(RIGHT_DIR);
-        //   }
-        //   sm_enable();
-        //   for (int i = 0; i < steps; i++) sm_step(100);
-        //
-        //   motor_position_steps = new_position_steps;
-        //
-        //   {
-        //     int motor_pos_percent =
-        //         motor_position_steps /
-        //         (SM_CLOSED_POS_FULL_STEPS - SM_OPEN_POS_FULL_STEPS);
-        //     char pub_payload_str[4];
-        //     sprintf(pub_payload_str, "%d", motor_pos_percent);
-        //     const char* pub_payload = (const char*)&pub_payload_str;
-        //
-        //     // u16_t pub_payload_len = 1 + (motor_pos_percent >= 10) +
-        //     // (motor_pos_percent >= 100);
-        //
-        //     err_t err;
-        //     u8_t qos = 1;
-        //     u8_t retain = 1;
-        //     err = mqtt_publish(mqtt_client,
-        //     MQTT_TOPIC_STATE_POSITION_PERCENT,
-        //                        pub_payload, strlen(pub_payload), qos, retain,
-        //                        mqttPubRequestCb, NULL);
-        //     // if (err != ERR_OK) {
-        //     //   setup_successful = false;
-        //     //   printf("Publish err: %d\n", err);
-        //     //   pubDiscoveryMsgErrLedCode();
-        //     // }
-        //   }
-        //
         break;
       }
       case POSITION_STEPS: {
-        /* Don't trust the publisher, check zero termination */
-        // if (data[len - 1] == 0) {
-        //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
-        // }
         using namespace stepper_motor::action;
 
         printf("Do position steps command stuff\n");
@@ -491,19 +389,11 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         break;
       }
       case QUIET: {
-        /* Don't trust the publisher, check zero termination */
-        // if (data[len - 1] == 0) {
-        //   printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
-        // }
         printf("Do quiet command stuff\n");
         if (len >= 2 && memcmp((char*)data, "ON", 2) == 0)
           window_sm->setQuietMode(true);
         else if (len >= 3 && memcmp((char*)data, "OFF", 3) == 0)
           window_sm->setQuietMode(false);
-
-        // publishStepperMotorQuietMode();
-        // publishStepperMotorSpeed();
-        // publishStepperMotorMicroSteps();
 
         break;
       }
@@ -514,21 +404,23 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
                window_sm->getSpeed(), new_speed);
         break;
       }
+      case HOME: {
+        if (len >= 5 && memcmp((char*)data, "PRESS", 5) == 0)
+          window_sm->action_queue.enqueue(
+              stepper_motor::action::ActionType::HOME);
+        break;
+      }
+      case CALIBRATE: {
+        if (len >= 5 && memcmp((char*)data, "PRESS", 5) == 0)
+          window_sm->action_queue.enqueue(
+              stepper_motor::action::ActionType::CALIBRATE);
+        break;
+      }
       case OTHER: {
         printf("mqtt_incoming_data_cb: Ignoring payload...\n");
         break;
       }
     }
-    // if (inpub_id == 0) {
-    //   /* Don't trust the publisher, check zero termination */
-    //   if (data[len - 1] == 0) {
-    //     printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
-    //   }
-    // } else if (inpub_id == 1) {
-    //   /* Call an 'A' function... */
-    // } else {
-    //   printf("mqtt_incoming_data_cb: Ignoring payload...\n");
-    // }
   } else {
     /* Handle fragmented payload, store in buffer, write to file or whatever */
     printf("TODO: Handel fragmented MQTT payloads.\n");
@@ -550,6 +442,8 @@ static void mqttConnectionCb(mqtt_client_t* client, void* arg,
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_MM, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_STEPS, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_PERCENT, err)
+    MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_HOME, err)
+    MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_CALIBRATE, err)
 
   } else {
     // On error, blink error code and try to reconnect.
@@ -641,14 +535,14 @@ void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
     cyw43_arch_lwip_begin();
     {
       const char* pub_payload = HA_DEVICE_MQTT_DISCOVERY_MSG;
-      u8_t qos = 2;    /* 0 1 or 2, see MQTT specification */
+      u8_t qos = 1;    /* 0 1 or 2, see MQTT specification */
       u8_t retain = 1; /* Retain discovery message for if/when HA restarts. */
       err = mqtt_publish(client, HA_DEVICE_MQTT_DISCOVERY_TOPIC, pub_payload,
                          strlen(pub_payload), qos, retain, mqttPubRequestCb,
                          NULL);
       if (err != ERR_OK) {
         // setup_successful = false;
-        printf("Publish err: %d\n", err);
+        printf("Discovery Message Publish err: %d\n", err);
         pubDiscoveryMsgErrLedCode();
       }
     }

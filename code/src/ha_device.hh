@@ -122,7 +122,8 @@
   "\"state_topic\":\"" MQTT_TOPIC_STATE_POSITION_STEPS            \
   "\","                                                           \
   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_POSITION_STEPS        \
-  "\""                                                            \
+  "\","                                                           \
+  "\"icon\":\"mdi:tape-measure\""                                 \
   "},"                                                            \
                                                                   \
   /* Main Window Position Millimeters Component */                \
@@ -147,13 +148,14 @@
   "\"state_topic\":\"" MQTT_TOPIC_STATE_POSITION_MM               \
   "\","                                                           \
   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_POSITION_MM           \
-  "\""                                                            \
+  "\","                                                           \
+  "\"icon\":\"mdi:tape-measure\""                                 \
   "},"                                                            \
                                                                   \
   /* Quiet Mode Switch Component */                               \
   "\"" HA_DEVICE_ID                                               \
   "-Quiet_Mode_Switch\":{"                                        \
-  "\"name\":\"Quiet Mode Switch\","                               \
+  "\"name\":\"Quiet Mode\","                                      \
   "\"unique_id\":\"" HA_DEVICE_ID                                 \
   "-Quiet_Mode_Switch\","                                         \
   "\"optimistic\":\"false\","                                     \
@@ -167,13 +169,56 @@
   "\"state_topic\":\"" MQTT_TOPIC_STATE_QUIET                     \
   "\","                                                           \
   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_QUIET                 \
+  "\","                                                           \
+  "\"icon\":\"mdi:volume-off\""                                   \
+  "},"                                                            \
+                                                                  \
+  /* Home Button */                                               \
+  "\"" HA_DEVICE_ID                                               \
+  "-Home_Button\":{"                                              \
+  "\"name\":\"Home\","                                            \
+  "\"unique_id\":\"" HA_DEVICE_ID                                 \
+  "-Home_Button\","                                               \
+  "\"optimistic\":\"false\","                                     \
+  "\"availability\":{"                                            \
+  "\"payload_available\":\"online\","                             \
+  "\"payload_not_available\":\"offline\","                        \
+  "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
   "\""                                                            \
+  "},"                                                            \
+  "\"p\":\"button\","                                             \
+  "\"state_topic\":\"" MQTT_TOPIC_STATE_QUIET                     \
+  "\","                                                           \
+  "\"command_topic\":\"" MQTT_TOPIC_COMMAND_HOME                  \
+  "\","                                                           \
+  "\"icon\":\"mdi:home-switch\""                                  \
+  "},"                                                            \
+                                                                  \
+  /* Calibrate Button */                                          \
+  "\"" HA_DEVICE_ID                                               \
+  "-Calibrate_Button\":{"                                         \
+  "\"name\":\"Calibrate\","                                       \
+  "\"unique_id\":\"" HA_DEVICE_ID                                 \
+  "-Calibrate_Button\","                                          \
+  "\"optimistic\":\"false\","                                     \
+  "\"availability\":{"                                            \
+  "\"payload_available\":\"online\","                             \
+  "\"payload_not_available\":\"offline\","                        \
+  "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
+  "\""                                                            \
+  "},"                                                            \
+  "\"p\":\"button\","                                             \
+  "\"state_topic\":\"" MQTT_TOPIC_STATE_QUIET                     \
+  "\","                                                           \
+  "\"command_topic\":\"" MQTT_TOPIC_COMMAND_CALIBRATE             \
+  "\","                                                           \
+  "\"icon\":\"mdi:math-compass\""                                 \
   "},"                                                            \
                                                                   \
   /* Micro Step Sensor */                                         \
   "\"" HA_DEVICE_ID                                               \
   "-Micro_Step_Sensor\":{"                                        \
-  "\"name\":\"Micro Step Sensor\","                               \
+  "\"name\":\"Micro Steps\","                                     \
   "\"unique_id\":\"" HA_DEVICE_ID                                 \
   "-Micro_Step_Sensor\","                                         \
   "\"optimistic\":\"false\","                                     \
@@ -187,6 +232,7 @@
   "\"device_class\":null,"                                        \
   "\"state_topic\":\"" MQTT_TOPIC_SENSOR_MICRO_STEPS              \
   "\","                                                           \
+  "\"icon\":\"mdi:angle-acute\","                                 \
   "\"qos\":1"                                                     \
   "},"                                                            \
                                                                   \
@@ -207,7 +253,8 @@
   "\"device_class\":\"duration\","                                \
   "\"unit_of_measurement\":\"µs\","                               \
   "\"state_topic\":\"" MQTT_TOPIC_SENSOR_HALF_STEP_DELAY          \
-  "\""                                                            \
+  "\","                                                           \
+  "\"icon\":\"mdi:timer-sand-complete\""                          \
   "}"                                                             \
                                                                   \
   "},"                                                            \
