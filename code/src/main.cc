@@ -315,7 +315,7 @@ int main() {
 
     // Every ten thousand loop iterations, publish all the stepper motor data to
     // insure the server stays in sync.
-    if (loop_iteration % 10000 == 0) {
+    if (loop_iteration % 1800 == 0) {
       window_sm.publishAll();
     }
 
