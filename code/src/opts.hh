@@ -3,7 +3,10 @@
 #include "common.hh"
 #include "pins.hh"
 
-#define DEFAULT_WINDOW_WIDTH_MM 200
+// If your limit switches are correctly positioned, you can set this value to
+// slightly above the distance between your limit switches and the window will
+// auto calibrate when it first gets fully opened.
+#define DEFAULT_WINDOW_WIDTH_MM 630
 
 #define INVERT_DIRECTION 0
 #define INVERT_DISPLAY_DIRECTION 0
