@@ -47,9 +47,10 @@ enum InPub {
   POSITION_STEPS,
   POSITION_MM,
   QUIET,
+  SOFT_START,
   SPEED,
   HOME,
-  CALIBRATE
+  CALIBRATE,
 };
 
 // **===============================================**
@@ -132,15 +133,11 @@ static void mqttPubRequestCb(void* arg, err_t result) {
 }
 
 static void mqttSubRequestCb(void* arg, err_t result) {
-  for (int i = 0; i < 4; i++) {
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
-    sleep_ms(150);
-    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    sleep_ms(75);
-  }
   if (result != ERR_OK) {
     printf("Publish result: %d\n", result);
     subErrLedCode();
+  } else {
+    watchdog_update();
   }
 }
 
@@ -159,6 +156,8 @@ static void mqttIncomingPublishCb(void* arg, const char* topic, u32_t tot_len) {
     inpub_id = POSITION_MM;
   } else if (strcmp(topic, MQTT_TOPIC_COMMAND_QUIET) == 0) {
     inpub_id = QUIET;
+  } else if (strcmp(topic, MQTT_TOPIC_COMMAND_SOFT_START) == 0) {
+    inpub_id = SOFT_START;
   } else if (strcmp(topic, MQTT_TOPIC_COMMAND_SPEED) == 0) {
     inpub_id = SPEED;
   } else if (strcmp(topic, MQTT_TOPIC_COMMAND_HOME) == 0) {
@@ -269,6 +268,17 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
 
         break;
       }
+      case SOFT_START: {
+        if (len >= 2 && memcmp((char*)data, "ON", 2) == 0) {
+          printf("Enabling soft start mode.\n");
+          window_sm->setSoftStartMode(true);
+        } else if (len >= 3 && memcmp((char*)data, "OFF", 3) == 0) {
+          printf("Disabling soft start mode.\n");
+          window_sm->setSoftStartMode(false);
+        }
+
+        break;
+      }
       case SPEED: {
         float new_speed = MAX((atof((char*)data)), 0.01);
         window_sm->setSpeed(new_speed);
@@ -313,6 +323,7 @@ static void mqttConnectionCb(mqtt_client_t* client, void* arg,
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_GENERAL, err);
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_SPEED, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_QUIET, err)
+    MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_SOFT_START, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_MM, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_STEPS, err)
     MQTT_SUBSCRIBE(client, MQTT_TOPIC_COMMAND_POSITION_PERCENT, err)

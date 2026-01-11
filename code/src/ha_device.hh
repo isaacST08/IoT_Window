@@ -173,6 +173,27 @@
   "\"icon\":\"mdi:volume-off\""                                   \
   "},"                                                            \
                                                                   \
+  /* Soft Start Switch Component */                               \
+  "\"" HA_DEVICE_ID                                               \
+  "-Soft_Start_Switch\":{"                                        \
+  "\"name\":\"Motor Soft Start\","                                \
+  "\"unique_id\":\"" HA_DEVICE_ID                                 \
+  "-Soft_Start_Switch\","                                         \
+  "\"optimistic\":\"false\","                                     \
+  "\"availability\":{"                                            \
+  "\"payload_available\":\"online\","                             \
+  "\"payload_not_available\":\"offline\","                        \
+  "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
+  "\""                                                            \
+  "},"                                                            \
+  "\"p\":\"switch\","                                             \
+  "\"state_topic\":\"" MQTT_TOPIC_STATE_SOFT_START                \
+  "\","                                                           \
+  "\"command_topic\":\"" MQTT_TOPIC_COMMAND_SOFT_START            \
+  "\","                                                           \
+  "\"icon\":\"mdi:chart-bell-curve-cumulative\""                  \
+  "},"                                                            \
+                                                                  \
   /* Home Button */                                               \
   "\"" HA_DEVICE_ID                                               \
   "-Home_Button\":{"                                              \

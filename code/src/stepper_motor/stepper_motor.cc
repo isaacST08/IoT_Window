@@ -5,6 +5,7 @@
 #include <pico/cyw43_arch.h>
 #include <pico/platform/compiler.h>
 
+#include "action_queue.hh"
 #include "advanced_opts.hh"
 #include "common.hh"
 #include "limit_switch.hh"
@@ -82,6 +83,13 @@ stepper_motor::StepperMotor::StepperMotor(uint enable_pin, uint direction_pin,
 
   // Quiet mode off by default.
   this->quiet_mode = false;
+
+  // Soft start mode on by default.
+  this->soft_start_mode = true;
+
+  // Temporary flag to ignore main soft start flag when performing two
+  // actions of the same type in the same direction.
+  this->roll_soft_start = false;
 
   // No call to stop the motor.
   this->stop_motor = false;
@@ -175,6 +183,31 @@ void StepperMotor::setQuietMode(bool mode) {
 
   // Relay the change in quiet mode to the MQTT server.
   this->publishQuietMode();
+}
+
+//
+//
+// **===============================================**
+// ||          <<<<< SOFT START MODE >>>>>          ||
+// **===============================================**
+
+/**
+ * Gets the current soft start mode of the motor.
+ */
+bool StepperMotor::getSoftStartMode() { return this->soft_start_mode; }
+
+/**
+ * Sets the soft start mode for the motor.
+ *
+ * \param mode Whether to enable or disable soft start mode.
+ */
+void StepperMotor::setSoftStartMode(bool mode) {
+  // Set the soft start mode flag.
+  this->soft_start_mode = mode;
+  this->roll_soft_start = false;
+
+  // Relay the change in soft start mode to the MQTT server.
+  this->publishSoftStartMode();
 }
 
 //
@@ -429,7 +462,7 @@ void StepperMotor::step() { this->stepExact(this->half_step_delay); }
  * @param dir The direction to move in.
  * @param soft_start Whether to soft start the movement.
  */
-void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
+void StepperMotor::moveSteps(uint64_t steps, direction_t dir) {
   uint64_t steps_remaining = steps;
 
   // Reset the stop motor command.
@@ -446,7 +479,8 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
   this->setDir(dir);
 
   // Provide a soft start if requested.
-  if (soft_start) this->softStart(&steps_remaining, SM_SOFT_START_HALF_DELAY);
+  if (this->soft_start_mode && !this->roll_soft_start)
+    this->softStart(&steps_remaining, SM_SOFT_START_HALF_DELAY);
 
   // Move the rest of the steps at the default speed.
   while (!this->stop_motor && steps_remaining > 0 &&
@@ -658,7 +692,7 @@ bool StepperMotor::close() {
  *
  * @param step The absolute step position to move the motor to.
  */
-void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
+void StepperMotor::moveToPosition(uint64_t step) {
   uint64_t current_step_position = this->getPosition();
 
   // Determine the number of steps required to make up the difference between
@@ -675,7 +709,33 @@ void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
   }
 
   // Move the steps to move to the desired position.
-  this->moveSteps(step_delta, dir, soft_start);
+  this->moveSteps(step_delta, dir);
+
+  // If the next action is the same action in the same direction,
+  // inform it that it doesn't need to perform another soft start.
+  if (this->action_queue.isEmpty()) {
+    this->roll_soft_start = false;
+  } else {
+    action::Action* next_action = this->action_queue.peek();
+
+    switch (next_action->action_type) {
+      case action::ActionType::MOVE_TO_STEP:
+        this->roll_soft_start =
+            ((next_action->data.step > this->getPosition()) ^
+             (dir == CLOSE_DIR));
+        break;
+
+      case action::ActionType::MOVE_TO_PERCENT:
+        this->roll_soft_start =
+            ((next_action->data.percent > this->getPositionPercentageExact()) ^
+             (dir == CLOSE_DIR));
+        break;
+
+      default:
+        this->roll_soft_start = false;
+        break;
+    }
+  }
 
   // Update state and publish position.
   this->updateState();
@@ -687,12 +747,12 @@ void StepperMotor::moveToPosition(uint64_t step, bool soft_start) {
  *
  * @param percent The open percentage to set the window to.
  */
-void StepperMotor::moveToPositionPercentage(float percent, bool soft_start) {
+void StepperMotor::moveToPositionPercentage(float percent) {
   // Clamp and convert the percentage to the equivalent position in steps.
   uint64_t step_position = this->percentageToSteps(CLAMP(0.0, percent, 100.0));
 
   // Move to that position.
-  this->moveToPosition(step_position, soft_start);
+  this->moveToPosition(step_position);
 };
 
 /**
@@ -716,7 +776,8 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
   uint64_t current_speed_hs_delay = SM_SOFT_START_HALF_DELAY;
 
   if (steps_remaining == NULL) {
-    while (current_speed_hs_delay > full_speed_hs_delay && !LS_TRIGGERED(ls)) {
+    while (current_speed_hs_delay > full_speed_hs_delay && !LS_TRIGGERED(ls) &&
+           !this->stop_motor) {
       for (uint64_t j = (uint64_t)ceil(
                (SM_SOFT_START_HALF_DELAY - current_speed_hs_delay + 1) *
                SM_SOFT_START_SKEW_FACTOR);
@@ -731,7 +792,8 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
     }
   } else {
     while (*steps_remaining > 0 &&
-           current_speed_hs_delay >= full_speed_hs_delay && !LS_TRIGGERED(ls)) {
+           current_speed_hs_delay >= full_speed_hs_delay && !LS_TRIGGERED(ls) &&
+           !this->stop_motor) {
       for (uint64_t j = (uint64_t)ceil(
                (SM_SOFT_START_HALF_DELAY - current_speed_hs_delay + 1) *
                SM_SOFT_START_SKEW_FACTOR);
@@ -849,6 +911,13 @@ void StepperMotor::publishQuietMode() {
   }
 }
 
+void StepperMotor::publishSoftStartMode() {
+  if (this->mqtt_client != NULL) {
+    basicMqttPublish(MQTT_TOPIC_STATE_SOFT_START,
+                     (this->getSoftStartMode()) ? "ON" : "OFF", 1, 0);
+  }
+}
+
 void StepperMotor::publishPosition() {
   if (this->mqtt_client != NULL) {
     char buf[64];
@@ -941,6 +1010,7 @@ void StepperMotor::publishFullOpenPosition() {
 void StepperMotor::publishAll() {
   this->publishSpeed();
   this->publishQuietMode();
+  this->publishSoftStartMode();
   this->publishPosition();
   this->publishState();
   this->publishMicroSteps();

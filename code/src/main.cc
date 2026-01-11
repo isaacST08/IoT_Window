@@ -175,6 +175,9 @@ int main() {
   // timing out.
   gpio_put(YELLOW_LED_PIN, 0);
 
+  // Publish the current state of the device.
+  window_sm.publishAll();
+
   /*
   **=========================================================================**
   ||                                                                         ||
@@ -273,7 +276,7 @@ int main() {
                  percentage, window_sm.action_queue.getCount());
 
           // Move to the requested position.
-          window_sm.moveToPositionPercentage(percentage, true);
+          window_sm.moveToPositionPercentage(percentage);
 
           break;
         }
@@ -287,7 +290,7 @@ int main() {
                  step, window_sm.action_queue.getCount());
 
           // Move to the requested position.
-          window_sm.moveToPosition(step, true);
+          window_sm.moveToPosition(step);
 
           break;
         }

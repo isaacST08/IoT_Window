@@ -86,6 +86,10 @@ class StepperMotor {
   bool getQuietMode();
   void setQuietMode(bool mode);
 
+  // --- Soft Start Mode ---
+  bool getSoftStartMode();
+  void setSoftStartMode(bool mode);
+
   // --- Micro Steps ---
   uint getMicroStep();
   uint getMicroStepInt();
@@ -109,7 +113,7 @@ class StepperMotor {
   void stepExact(uint64_t half_step_delay);
   void step();
 
-  void moveSteps(uint64_t steps, direction_t dir, bool soft_start);
+  void moveSteps(uint64_t steps, direction_t dir);
 
   // --- Movement ---
   void stop();
@@ -121,8 +125,8 @@ class StepperMotor {
   bool open();
   bool close();
 
-  void moveToPosition(uint64_t step, bool soft_start);
-  void moveToPositionPercentage(float percent, bool soft_start);
+  void moveToPosition(uint64_t step);
+  void moveToPositionPercentage(float percent);
 
   void softStart(uint64_t* steps_remaining,
                  uint64_t initial_speed_half_step_delay);
@@ -141,6 +145,7 @@ class StepperMotor {
 
   void publishSpeed();
   void publishQuietMode();
+  void publishSoftStartMode();
   void publishPosition();
   void publishState();
   void publishMicroSteps();
@@ -152,6 +157,8 @@ class StepperMotor {
   State state;
   struct StepperMotorPins pins;
   bool quiet_mode;
+  bool soft_start_mode;
+  bool roll_soft_start;
   bool stop_motor;
   int64_t step_position;
   uint64_t half_step_delay;
