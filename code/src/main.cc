@@ -72,8 +72,16 @@ int main() {
     }
   }
 
+  // **========================================**
+  // ||          <<<<< WATCHDOG >>>>>          ||
+  // **========================================**
+
   // Enable the yellow LED if the reboot was caused by the watchdog.
   if (watchdog_enable_caused_reboot()) gpio_put(YELLOW_LED_PIN, 1);
+
+  printf("Enabling watchdog...");
+  watchdog_enable(8388, 1);  // 8.388 seconds, max for RP2040.
+  printf(" done.\n");
 
   // **=============================================**
   // ||          <<<<< NETWORK SETUP >>>>>          ||
@@ -162,14 +170,6 @@ int main() {
   printf("Homeing...\n");
   window_sm.home();
   printf("Homeing Complete.\n");
-
-  // **========================================**
-  // ||          <<<<< WATCHDOG >>>>>          ||
-  // **========================================**
-
-  printf("Enabling watchdog...");
-  watchdog_enable(8388, 1);  // 8.388 seconds, max for RP2040.
-  printf(" done.\n");
 
   // Disable the yellow LED that indicated this boot was caused by the watchdog
   // timing out.
