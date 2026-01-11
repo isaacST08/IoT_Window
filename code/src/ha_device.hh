@@ -282,72 +282,9 @@
   "\"qos\":0"                                                     \
   "}"
 
-// #define HA_DEVICE_COMP_MAIN_WINDOW                                \
-//   "" /* Main Window Component */                                  \
-//   "\"name\":\"Main Window\","                                     \
-//   "\"unique_id\":\"" HA_DEVICE_ID                                 \
-//   "-Main_Window\","                                               \
-//   "\"optimistic\":\"false\","                                     \
-//   "\"availability\":{"                                            \
-//   "\"payload_available\":\"online\","                             \
-//   "\"payload_not_available\":\"offline\","                        \
-//   "\"topic\":\"" MQTT_TOPIC_AVAILABILITY                          \
-//   "\""                                                            \
-//   "},"                                                            \
-//   "\"device_class\":\"window\","                                  \
-//   "\"payload_open\":\"OPEN\","                                    \
-//   "\"payload_close\":\"CLOSE\","                                  \
-//   "\"payload_stop\":\"STOP\","                                    \
-//   "\"state_topic\":\"" MQTT_TOPIC_STATE_GENERAL                   \
-//   "\","                                                           \
-//   "\"command_topic\":\"" MQTT_TOPIC_COMMAND_GENERAL               \
-//   "\","                                                           \
-//   "\"position_topic\":\"" MQTT_TOPIC_STATE_POSITION_PERCENT       \
-//   "\","                                                           \
-//   "\"set_position_topic\":\"" MQTT_TOPIC_COMMAND_POSITION_PERCENT \
-//   "\","                                                           \
-//   "\"value_template\":\"{{ value }}\""
-//
-// #define HA_DEVICE_MQTT_DISCOVERY_MSG(component) \
-//   "{"                                           \
-//   "\"dev\": {" /* device */                     \
-//   "\"ids\": \"" HA_DEVICE_ID                    \
-//   "\"," /* identifiers */                       \
-//   "\"name\": \"" HA_DEVICE_ID                   \
-//   "\"," /* name */                              \
-//   "\"mf\": \"" HA_DEVICE_MANUFACTURER           \
-//   "\"," /* manufacturer */                      \
-//   "\"mdl\": \"" HA_DEVICE_MODEL                 \
-//   "\"," /* model */                             \
-//   "\"sw\": \"" HA_DEVICE_SOFTWARE_VERSION       \
-//   "\"," /* sw_version */                        \
-//   "\"sn\": \"" HA_DEVICE_SERIAL_NUMBER          \
-//   "\"," /* serial_number */                     \
-//   "\"hw\": \"" HA_DEVICE_HARDWARE_VERSION       \
-//   "\"" /* hw_version */                         \
-//   "},"                                          \
-//   "\"o\": {" /* origin */                       \
-//   "\"name\": \"foobar\","                       \
-//   "\"sw\": \"" HA_DEVICE_SOFTWARE_VERSION       \
-//   "\"" /* sw_version */                         \
-//   "}," component                                \
-//   "\"qos\": 0"                                  \
-//   "}"
-
 bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
                       u8_t retain);
-// void updateState(enum StepperMotorAction device_state);
-// void updateState(stepper_motor::Action device_state);
 bool mqttDoConnect(mqtt_client_t* client);
 void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm);
-// void haDeviceSetup(mqtt_client_t* client, StepperMotor* stepper_motor);
-
-// void publishStepperMotorSpeed();
-// void publishStepperMotorQuietMode();
-// void publishStepperMotorState();
-// void publishStepperMotorPositionPercentage();
-// void publishStepperMotorPositionSteps();
-// void publishStepperMotorPositionMM();
-// void publishAll();
 
 #endif

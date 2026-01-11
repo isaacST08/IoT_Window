@@ -1,7 +1,6 @@
 # Little driver makefile to make the complicated bootloader less of a hassle.
 
 PROJECT=IoT_Window_V3
-# PROJECT=blink
 
 TOOLCHAIN_PREFIX=arm-none-eabi-
 
@@ -41,6 +40,7 @@ secrets.h:
 		echo "" >> src/secrets.h; \
 		echo "#endif" >> src/secrets.h; \
 	fi
+.SILENT : secrets.h
 
 clean:
 	rm -rf build

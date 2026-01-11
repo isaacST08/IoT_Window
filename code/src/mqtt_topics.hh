@@ -3,15 +3,25 @@
 
 #include "ha_device_info.hh"
 
-// ----- MQTT Topics -----
+// **=======================================================**
+// ||          <<<<< DEVICE ATTRIBUTE TOPICS >>>>>          ||
+// **=======================================================**
+
+// Device base topic.
 #define MQTT_TOPIC_BASE "hass/" HA_DEVICE_ID "/"
+
+// Availability topic.
 #define MQTT_TOPIC_AVAILABILITY MQTT_TOPIC_BASE "avail"
+
+// --- State Topics ---
 #define MQTT_TOPIC_STATE_GENERAL MQTT_TOPIC_BASE "state/gnrl"
 #define MQTT_TOPIC_STATE_SPEED MQTT_TOPIC_BASE "state/speed"
 #define MQTT_TOPIC_STATE_QUIET MQTT_TOPIC_BASE "state/quiet"
 #define MQTT_TOPIC_STATE_POSITION_STEPS MQTT_TOPIC_BASE "state/steps"
 #define MQTT_TOPIC_STATE_POSITION_MM MQTT_TOPIC_BASE "state/mm"
 #define MQTT_TOPIC_STATE_POSITION_PERCENT MQTT_TOPIC_BASE "state/percent"
+
+// --- Command Topics ---
 #define MQTT_TOPIC_COMMAND_GENERAL MQTT_TOPIC_BASE "cmd/gnrl"
 #define MQTT_TOPIC_COMMAND_SPEED MQTT_TOPIC_BASE "cmd/speed"
 #define MQTT_TOPIC_COMMAND_QUIET MQTT_TOPIC_BASE "cmd/quiet"
@@ -20,12 +30,17 @@
 #define MQTT_TOPIC_COMMAND_POSITION_PERCENT MQTT_TOPIC_BASE "cmd/percent"
 #define MQTT_TOPIC_COMMAND_HOME MQTT_TOPIC_BASE "cmd/home"
 #define MQTT_TOPIC_COMMAND_CALIBRATE MQTT_TOPIC_BASE "cmd/calibrate"
+
+// --- Sensor Topics ---
 #define MQTT_TOPIC_SENSOR_MICRO_STEPS MQTT_TOPIC_BASE "snsr/micrstp"
 #define MQTT_TOPIC_SENSOR_HALF_STEP_DELAY MQTT_TOPIC_BASE "snsr/stepdelay"
 #define MQTT_TOPIC_SENSOR_FULL_OPEN_MEASUREMENT \
   MQTT_TOPIC_BASE "snsr/fullopnmsr"
 
-// ----- Device Discovery -----
+// **================================================**
+// ||          <<<<< DEVICE DISCOVERY >>>>>          ||
+// **================================================**
+
 #define HA_DEVICE_MQTT_DISCOVERY_TOPIC "hass/device/" HA_DEVICE_ID "/config"
 
 #endif

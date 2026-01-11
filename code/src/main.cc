@@ -245,8 +245,6 @@ int main() {
 
       // Get the next action and its argument from the queue.
       Action action = window_sm.action_queue.dequeue();
-      // char action_arg[256];
-      // window_sm.dequeueAction(&action, action_arg, sizeof(action_arg));
 
       // Perform appropriate operation.
       switch (action.action_type) {
@@ -308,12 +306,9 @@ int main() {
         case ActionType::NONE:
           break;
       }
-
-      // After the operation is completed, publish the new state of the device.
-      // publishAll();
     }
 
-    // Every ten thousand loop iterations, publish all the stepper motor data to
+    // Every ~20 minutes, publish all the stepper motor data to
     // insure the server stays in sync.
     if (loop_iteration % 1800 == 0) {
       window_sm.publishAll();

@@ -19,7 +19,6 @@
 void init_pins() {
   // LEDs
   INIT_LED_PIN(RED_LED_PIN);
-  INIT_LED_PIN(GREEN_LED_PIN);
   INIT_LED_PIN(YELLOW_LED_PIN);
   INIT_LED_PIN(BLUE_LED_PIN);
 
@@ -29,9 +28,3 @@ void init_pins() {
   gpio_set_pulls(LS_1, true, false);  // Pull up
   gpio_set_pulls(LS_2, true, false);  // Pull up
 }
-
-// void init_pin(uint pin, bool dir, bool init_val) {
-//   gpio_init(pin);
-//   gpio_set_dir(pin, dir);
-//   if (dir == GPIO_OUT) gpio_put(pin, init_val);
-// }

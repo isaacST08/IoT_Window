@@ -9,7 +9,6 @@
 #include "common.hh"
 #include "limit_switch.hh"
 #include "mqtt_topics.hh"
-// #include "opts.h"
 #include "pins.hh"
 
 using namespace stepper_motor;
@@ -229,9 +228,8 @@ void StepperMotor::setMicroStep(uint micro_step) {
 
     // Make the required steps as small as possible and absolute.
     // We will step towards the zero position.
-    if (this->step_position < 0) {
+    if (this->step_position < 0)
       required_steps -= (SM_SMALLEST_MS / desired_ms_int);
-    }
 
     // Set the direction of the motor to step towards the zero point position.
     // Dir of 0 goes up, 1 goes down. So if the position is positive, that means
@@ -239,9 +237,7 @@ void StepperMotor::setMicroStep(uint micro_step) {
     StepperMotor::setDir(this->step_position >= 0);
 
     // Perform the steps.
-    for (int i = 0; i < required_steps; i++) {
-      this->step();
-    }
+    for (int i = 0; i < required_steps; i++) this->step();
 
     // Return the motor direction to how it was found.
     this->setDir(saved_dir);
@@ -310,36 +306,6 @@ void StepperMotor::setSpeed(float speed) {
         chosen_micro_step = MS_ENCODE(ms);
       }
     }
-
-    // // --- MS 32 ---
-    // possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed,
-    // 32); if (SM_MS32_MIN_HALF_DELAY < possible_half_step_delay &&
-    //     possible_half_step_delay <
-    //         (chosen_half_step_delay - 1) * (chosen_micro_step_int / 32)) {
-    //   chosen_half_step_delay = possible_half_step_delay;
-    //   chosen_micro_step_int = 32;
-    //   chosen_micro_step = MS_32;
-    // }
-    //
-    // // --- MS 16 ---
-    // possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed,
-    // 16); if (SM_MS16_MIN_HALF_DELAY < possible_half_step_delay &&
-    //     possible_half_step_delay <
-    //         (chosen_half_step_delay - 1) * (chosen_micro_step_int / 16)) {
-    //   chosen_half_step_delay = possible_half_step_delay;
-    //   chosen_micro_step_int = 16;
-    //   chosen_micro_step = MS_16;
-    // }
-    //
-    // // --- MS 8 ---
-    // possible_half_step_delay = MM_PER_SEC_TO_US_PER_HALF_MICROSTEP(speed, 8);
-    // if (SM_MS8_MIN_HALF_DELAY < possible_half_step_delay &&
-    //     possible_half_step_delay <
-    //         (chosen_half_step_delay - 1) * (chosen_micro_step_int / 8)) {
-    //   chosen_half_step_delay = possible_half_step_delay;
-    //   chosen_micro_step_int = 8;
-    //   chosen_micro_step = MS_8;
-    // }
 
     // Set determined values.
     this->setMicroStep(chosen_micro_step);
@@ -489,9 +455,7 @@ void StepperMotor::moveSteps(uint64_t steps, direction_t dir, bool soft_start) {
     steps_remaining--;
   }
 
-  if (LS_TRIGGERED(LS_CLOSED)) {
-    this->step_position = 0;
-  }
+  if (LS_TRIGGERED(LS_CLOSED)) this->step_position = 0;
 
   // Update the state of the window.
   this->updateState();
@@ -802,13 +766,9 @@ void StepperMotor::setState(State state) {
 
 void StepperMotor::updateState() {
   // Update the state of the window
-  if (LS_TRIGGERED(LS_CLOSED)) {
-    this->setState(State::CLOSED);
-  } else if (LS_TRIGGERED(LS_OPEN)) {
-    this->setState(State::OPEN);
-  } else {
-    this->setState(State::STOPPED);
-  }
+  this->setState((LS_TRIGGERED(LS_OPEN))     ? State::OPEN
+                 : (LS_TRIGGERED(LS_CLOSED)) ? State::CLOSED
+                                             : State::STOPPED);
 }
 
 //

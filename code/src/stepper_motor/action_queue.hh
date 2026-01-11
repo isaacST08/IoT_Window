@@ -4,7 +4,6 @@
 #include <pico/critical_section.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 #include <sys/types.h>
 
 // **====================================================**

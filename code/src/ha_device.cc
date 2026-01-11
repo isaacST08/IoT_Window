@@ -1,6 +1,5 @@
 #include "ha_device.hh"
 
-// #include <cyw43.h>
 #include <cyw43_configport.h>
 #include <hardware/gpio.h>
 #include <hardware/watchdog.h>
@@ -12,19 +11,13 @@
 #include <string.h>
 
 #include "action_queue.hh"
-#include "advanced_opts.hh"
 #include "ha_device_info.hh"
 #include "mqtt_topics.hh"
 #include "network.hh"
-#include "opts.hh"
 #include "pico/cyw43_arch.h"
 #include "pins.hh"
 #include "secrets.hh"
 #include "stepper_motor.hh"
-
-// extern "C" {
-// #include "network.h"
-// }
 
 #define MQTT_SUBSCRIBE(client, topic, err)                                \
   for (int i = 0; i < 3; i++) {                                           \
@@ -46,8 +39,6 @@
     }                                                                     \
   }                                                                       \
   sleep_ms(150);
-
-// #define WINDOW_OPEN_FULL_STEPS 10000
 
 enum InPub {
   OTHER,
@@ -125,129 +116,6 @@ void pubDiscoveryMsgErrLedCode() {
     sleep_ms(100);
   }
 }
-// **===============================================**
-// ||          <<<<< BASIC FUNCTIONS >>>>>          ||
-// **===============================================**
-
-// static void mqttPubRequestCb(void* arg, err_t result);
-//
-// bool basicMqttPublish(const char* topic, const char* payload, u8_t qos,
-//                       u8_t retain) {
-//   // const char* pub_payload = payload;
-//
-//   err_t err;
-//   cyw43_arch_lwip_begin();
-//   err = mqtt_publish(mqtt_client, topic, payload, strlen(payload), qos,
-//   retain,
-//                      mqttPubRequestCb, NULL);
-//   cyw43_arch_lwip_end();
-//   if (err != ERR_OK) {
-//     // setup_successful = false;
-//     printf("Publish err: %d\n", err);
-//     // pubDiscoveryMsgErrLedCode();
-//     return false;
-//   }
-//
-//   return true;
-// }
-
-// **===========================================================**
-// ||          <<<<< HA DEVICE PUBLISH FUNCTIONS >>>>>          ||
-// **===========================================================**
-
-// void publishStepperMotorSpeed() {
-//   char buf[16];
-//   sprintf(buf, "%.2f", window_sm->getSpeed());
-//   basicMqttPublish(MQTT_TOPIC_STATE_SPEED, buf, 1, 0);
-// }
-//
-// void publishStepperMotorQuietMode() {
-//   basicMqttPublish(MQTT_TOPIC_STATE_QUIET,
-//                    (window_sm->getQuietMode()) ? "ON" : "OFF", 1, 0);
-// }
-//
-// void publishStepperMotorPositionPercentage() {
-//   char buf[64];
-// #if INVERT_DISPLAY_DIRECTION
-//   sprintf(buf, "%d", -1 * window_sm->getPositionPercentage());
-// #else
-//   sprintf(buf, "%d", smGetPositionPercentage(window_stepper_motor));
-// #endif
-//   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_PERCENT, buf, 1, 0);
-// }
-//
-// void publishStepperMotorPositionSteps() {
-//   char buf[64];
-// #if INVERT_DISPLAY_DIRECTION
-//   sprintf(buf, "%lld", -1 * window_sm->getPosition());
-// #else
-//   sprintf(buf, "%lld", window_sm->getPosition());
-// #endif
-//   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_STEPS, buf, 1, 0);
-// }
-//
-// void publishStepperMotorPositionMM() {
-//   char buf[64];
-//   sprintf(buf, "%0.1f",
-//           (double)window_sm->getPosition() /
-//               (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-// #if INVERT_DISPLAY_DIRECTION
-//   sprintf(buf, "%0.1f",
-//           -1 * ((double)window_sm->getPosition() /
-//                 (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS)));
-// #else
-//   sprintf(buf, "%0.1f",
-//           (double)window_sm->getPosition() /
-//               (SM_FULL_STEPS_PER_MM * SM_SMALLEST_MS));
-// #endif
-//   basicMqttPublish(MQTT_TOPIC_STATE_POSITION_MM, buf, 1, 0);
-// }
-//
-// void publishStepperMotorState() {
-//   char* payload;
-//   // switch (window_stepper_motor->state) {
-//   switch (window_sm->getState()) {
-//     case stepper_motor::State::OPEN:
-//       payload = (char*)"open";
-//       break;
-//     case stepper_motor::State::OPENING:
-//       payload = (char*)"opening";
-//       break;
-//     case stepper_motor::State::CLOSED:
-//       payload = (char*)"closed";
-//       break;
-//     case stepper_motor::State::CLOSING:
-//       payload = (char*)"closing";
-//       break;
-//     case stepper_motor::State::STOPPED:
-//       payload = (char*)"stopped";
-//       break;
-//   }
-//   basicMqttPublish(MQTT_TOPIC_STATE_GENERAL, payload, 1, 0);
-// }
-//
-// void publishStepperMotorMicroSteps() {
-//   char buf[4];
-//   sprintf(buf, "%d", window_sm->getMicroStepInt());
-//   basicMqttPublish(MQTT_TOPIC_SENSOR_MICRO_STEPS, buf, 1, 0);
-// }
-//
-// void publishStepperMotorHalfStepDelay() {
-//   char buf[16];
-//   sprintf(buf, "%llu", window_sm->getHalfStepDelay());
-//   basicMqttPublish(MQTT_TOPIC_SENSOR_HALF_STEP_DELAY, buf, 1, 0);
-// }
-//
-// void publishAll() {
-//   publishStepperMotorSpeed();
-//   publishStepperMotorQuietMode();
-//   publishStepperMotorState();
-//   publishStepperMotorPositionPercentage();
-//   publishStepperMotorPositionSteps();
-//   publishStepperMotorPositionMM();
-//   publishStepperMotorMicroSteps();
-//   publishStepperMotorHalfStepDelay();
-// }
 
 // **===============================================**
 // ||          <<<<< MQTT CALL-BACKS >>>>>          ||
@@ -336,7 +204,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
       case POSITION_PERCENT: {
         using namespace stepper_motor::action;
 
-        printf("Do position percentage command stuff\n");
+        printf("Move to percentage position command recieved.\n");
 
         // Parse the percentage integer from the data (a float is not expected
         // from HA).
@@ -362,7 +230,7 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
       case POSITION_STEPS: {
         using namespace stepper_motor::action;
 
-        printf("Do position steps command stuff\n");
+        printf("Move to step position command recieved.\n");
 
         // Create an action.
         Action action;
@@ -387,15 +255,17 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         if (data[len - 1] == 0) {
           printf("mqtt_incoming_data_cb: %s\n", (const char*)data);
         }
-        printf("Do position mm command stuff\n");
+        printf("TODO: Do position mm command stuff\n");
         break;
       }
       case QUIET: {
-        printf("Do quiet command stuff\n");
-        if (len >= 2 && memcmp((char*)data, "ON", 2) == 0)
+        if (len >= 2 && memcmp((char*)data, "ON", 2) == 0) {
+          printf("Enabling quiet mode.\n");
           window_sm->setQuietMode(true);
-        else if (len >= 3 && memcmp((char*)data, "OFF", 3) == 0)
+        } else if (len >= 3 && memcmp((char*)data, "OFF", 3) == 0) {
+          printf("Disabling quiet mode.\n");
           window_sm->setQuietMode(false);
+        }
 
         break;
       }
@@ -407,12 +277,14 @@ static void mqttIncomingDataCb(void* arg, const u8_t* data, u16_t len,
         break;
       }
       case HOME: {
+        printf("Home command recieved.\n");
         if (len >= 5 && memcmp((char*)data, "PRESS", 5) == 0)
           window_sm->action_queue.enqueue(
               stepper_motor::action::ActionType::HOME);
         break;
       }
       case CALIBRATE: {
+        printf("Calibrate command recieved.\n");
         if (len >= 5 && memcmp((char*)data, "PRESS", 5) == 0)
           window_sm->action_queue.enqueue(
               stepper_motor::action::ActionType::CALIBRATE);
@@ -524,12 +396,8 @@ bool mqttDoConnect(mqtt_client_t* client) {
  * \param sm The stepper motor for the window.
  */
 void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
-  // bool setup_successful = true;
-
   char buf[64];
-
   window_sm = sm;
-
   err_t err;
 
   // HA Device Discovery Message.
@@ -543,7 +411,6 @@ void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
                          strlen(pub_payload), qos, retain, mqttPubRequestCb,
                          NULL);
       if (err != ERR_OK) {
-        // setup_successful = false;
         printf("Discovery Message Publish err: %d\n", err);
         pubDiscoveryMsgErrLedCode();
       }
@@ -563,8 +430,7 @@ void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
                          strlen(pub_payload), qos, retain, mqttPubRequestCb,
                          NULL);
       if (err != ERR_OK) {
-        // setup_successful = false;
-        printf("Publish err: %d\n", err);
+        printf("Availability Message Publish err: %d\n", err);
         pubErrLedCode();
       }
     }
@@ -572,46 +438,7 @@ void haDeviceSetup(mqtt_client_t* client, stepper_motor::StepperMotor* sm) {
     if (err != ERR_OK) sleep_ms(300);
   } while (err != ERR_OK);
 
-  // Acquire lwIP locks.
-  // cyw43_arch_lwip_begin();
-
-  // // HA Device Discovery Message.
-  // {
-  //   const char* pub_payload = HA_DEVICE_MQTT_DISCOVERY_MSG;
-  //   err_t err;
-  //   u8_t qos = 2;    /* 0 1 or 2, see MQTT specification */
-  //   u8_t retain = 1; /* Retain discovery message for if/when HA restarts. */
-  //   err =
-  //       mqtt_publish(client, HA_DEVICE_MQTT_DISCOVERY_TOPIC, pub_payload,
-  //                    strlen(pub_payload), qos, retain, mqttPubRequestCb,
-  //                    NULL);
-  //   if (err != ERR_OK) {
-  //     setup_successful = false;
-  //     printf("Publish err: %d\n", err);
-  //     pubDiscoveryMsgErrLedCode();
-  //   }
-  // }
-
-  // Make device available in home assistant.
-  // {
-  //   const char* pub_payload = "online";
-  //   err_t err;
-  //   u8_t qos = 1;     /* 0 1 or 2, see MQTT specification */
-  //   u8_t retain = 0;  // Don't retain the online state of this device.
-  //   err =
-  //       mqtt_publish(client, MQTT_TOPIC_AVAILABILITY, pub_payload,
-  //                    strlen(pub_payload), qos, retain, mqttPubRequestCb,
-  //                    NULL);
-  //   if (err != ERR_OK) {
-  //     setup_successful = false;
-  //     printf("Publish err: %d\n", err);
-  //     pubErrLedCode();
-  //   }
-  // }
-
   // Publish device states.
   window_sm->publish_updates = true;
   window_sm->publishAll();
-
-  // return setup_successful;
 }

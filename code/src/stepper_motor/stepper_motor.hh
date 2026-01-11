@@ -2,22 +2,22 @@
 #define STEPPER_MOTOR_HH
 
 #include <lwip/apps/mqtt.h>
-
-#include <common.hh>
-// #include <lwip/arch.h>
-// #include <pico/types.h>
-// #include <stdbool.h>
 #include <stdint.h>
 
+#include <common.hh>
+
 #include "action_queue.hh"
-// #include "limit_switch.h"
 
 typedef u8_t micro_step_t;
 
+// **=========================================================**
+// ||          <<<<< MINIMUM MICRO-STEP DELAYS >>>>>          ||
+// **=========================================================**
+
 #define SM_MS8_MIN_HALF_DELAY 85
 #define SM_MS16_MIN_HALF_DELAY 42
-#define SM_MS32_MIN_HALF_DELAY 21  // Done
-#define SM_MS64_MIN_HALF_DELAY 11  // Done
+#define SM_MS32_MIN_HALF_DELAY 21
+#define SM_MS64_MIN_HALF_DELAY 11
 
 #define SM_MS8_MIN_HALF_DELAY_QUIET 602
 #define SM_MS16_MIN_HALF_DELAY_QUIET 301
@@ -38,14 +38,18 @@ typedef u8_t micro_step_t;
    : (ms == 8)  ? SM_MS8_MIN_HALF_DELAY_QUIET  \
                 : SM_MS8_MIN_HALF_DELAY_QUIET)
 
+// **==========================================**
+// ||          <<<<< SOFT START >>>>>          ||
+// **==========================================**
+
 #define SM_SOFT_START_HALF_DELAY 1000
 #define SM_SOFT_START_INCREASE_FACTOR 5
 
-#define SM_ARG_BUFFER_SIZE 256
+// **=============================================**
+// ||          <<<<< STEPPER MOTOR >>>>>          ||
+// **=============================================**
 
 namespace stepper_motor {
-
-// Action enum is defined in action_queue.hh
 
 enum class State { OPEN, OPENING, CLOSED, CLOSING, STOPPED };
 
@@ -56,24 +60,6 @@ struct StepperMotorPins {
   uint ms1;
   uint ms2;
 };
-
-// struct StepperMotorLimitSwitches {
-//   LimitSwitch* closed;
-//   LimitSwitch* open;
-//   LimitSwitch* home;
-// };
-
-// typedef struct StepperMotor {
-//   enum StepperMotorAction queued_action;
-//   enum StepperMotorState state;
-//   struct StepperMotorPins pins;
-//   // struct StepperMotorLimitSwitches limit_switches;
-//   bool quiet_mode;
-//   bool stop_motor;
-//   int64_t step_position;
-//   uint64_t half_step_delay;
-//   float speed;
-// } StepperMotor;
 
 class StepperMotor {
  public:
@@ -164,7 +150,6 @@ class StepperMotor {
  private:
   State state;
   struct StepperMotorPins pins;
-  // struct StepperMotorLimitSwitches limit_switches;
   bool quiet_mode;
   bool stop_motor;
   int64_t step_position;

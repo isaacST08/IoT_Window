@@ -20,7 +20,6 @@ target_include_directories(
   action_queue 
   PRIVATE 
   ${CMAKE_CURRENT_LIST_DIR} 
-  # ${CMAKE_CURRENT_LIST_DIR}/..
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_SOURCE_DIR}
