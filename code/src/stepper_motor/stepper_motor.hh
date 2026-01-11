@@ -42,8 +42,9 @@ typedef u8_t micro_step_t;
 // ||          <<<<< SOFT START >>>>>          ||
 // **==========================================**
 
-#define SM_SOFT_START_HALF_DELAY 1000
-#define SM_SOFT_START_INCREASE_FACTOR 5
+#define SM_SOFT_START_HALF_DELAY 250
+#define SM_SOFT_START_INCREASE_FACTOR 11
+#define SM_SOFT_START_SKEW_FACTOR 2.9
 
 // **=============================================**
 // ||          <<<<< STEPPER MOTOR >>>>>          ||

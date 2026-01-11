@@ -717,14 +717,33 @@ void StepperMotor::softStart(uint64_t* steps_remaining,
 
   if (steps_remaining == NULL) {
     while (current_speed_hs_delay > full_speed_hs_delay && !LS_TRIGGERED(ls)) {
-      this->stepExact(current_speed_hs_delay);
+      for (uint64_t j = (uint64_t)ceil(
+               (SM_SOFT_START_HALF_DELAY - current_speed_hs_delay + 1) *
+               SM_SOFT_START_SKEW_FACTOR);
+           j > 0; j--) {
+        if (!LS_TRIGGERED(ls))
+          this->stepExact(current_speed_hs_delay);
+        else
+          break;
+      }
+
       current_speed_hs_delay -= SM_SOFT_START_INCREASE_FACTOR;
     }
   } else {
     while (*steps_remaining > 0 &&
-           current_speed_hs_delay > full_speed_hs_delay && !LS_TRIGGERED(ls)) {
-      this->stepExact(current_speed_hs_delay);
-      (*steps_remaining)--;
+           current_speed_hs_delay >= full_speed_hs_delay && !LS_TRIGGERED(ls)) {
+      for (uint64_t j = (uint64_t)ceil(
+               (SM_SOFT_START_HALF_DELAY - current_speed_hs_delay + 1) *
+               SM_SOFT_START_SKEW_FACTOR);
+           j > 0; j--) {
+        if (*steps_remaining > 0 && !LS_TRIGGERED(ls)) {
+          this->stepExact(current_speed_hs_delay);
+          (*steps_remaining)--;
+        } else {
+          break;
+        }
+      }
+
       current_speed_hs_delay -= SM_SOFT_START_INCREASE_FACTOR;
     }
   }
