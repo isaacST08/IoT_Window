@@ -14,6 +14,7 @@ in
       mqttx
 
       cmake
+      colormake
       python3 # build requirements for pico-sdk
       udisks # Interact with bootloader filesystem
       tio # terminal program to interface with serial
